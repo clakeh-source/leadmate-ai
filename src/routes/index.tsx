@@ -69,10 +69,10 @@ function Header() {
         </nav>
         <div className="hidden items-center gap-3 md:flex">
           <a
-            href="#contact"
+            href="/dashboard"
             className="text-sm font-medium text-muted-foreground transition-smooth hover:text-foreground"
           >
-            Sign in
+            Dashboard
           </a>
           <a
             href="#demo"
