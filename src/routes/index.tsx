@@ -71,12 +71,18 @@ function Header() {
           ))}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
-          <a
-            href="/dashboard"
+          <Link
+            to="/auth"
+            className="text-sm font-medium text-muted-foreground transition-smooth hover:text-foreground"
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/dashboard"
             className="text-sm font-medium text-muted-foreground transition-smooth hover:text-foreground"
           >
             Dashboard
-          </a>
+          </Link>
           <a
             href="#demo"
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
