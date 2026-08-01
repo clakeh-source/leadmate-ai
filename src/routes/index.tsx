@@ -462,8 +462,55 @@ function Pricing() {
 
 /* ---------------- Contact / Demo ---------------- */
 
+const leadSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required").max(80),
+  lastName: z.string().trim().max(80).optional(),
+  email: z.string().trim().email("Enter a valid work email").max(255),
+  company: z.string().trim().min(1, "Company is required").max(120),
+  size: z.string().trim().max(60).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
 function ContactSection() {
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const parsed = leadSchema.safeParse({
+      firstName: fd.get("firstName"),
+      lastName: fd.get("lastName"),
+      email: fd.get("email"),
+      company: fd.get("company"),
+      size: fd.get("size"),
+      notes: fd.get("notes"),
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Please check the form");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.from("leads").insert({
+      first_name: parsed.data.firstName,
+      last_name: parsed.data.lastName || null,
+      email: parsed.data.email,
+      company: parsed.data.company,
+      company_size: parsed.data.size || null,
+      notes: parsed.data.notes || null,
+      source: "website_form",
+      marketing_consent: consent,
+      consent_at: consent ? new Date().toISOString() : null,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error("We couldn't submit your request. Please try again.");
+      return;
+    }
+    setSubmitted(true);
+  }
+
   return (
     <section id="contact" className="relative overflow-hidden bg-gradient-surface py-24">
       <div className="mx-auto grid max-w-7xl gap-12 px-6 lg:grid-cols-2 lg:items-center">
@@ -497,20 +544,15 @@ function ContactSection() {
               </div>
               <h3 className="mt-4 text-lg font-semibold">Thanks — we'll be in touch</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                A member of our team will reach out within 1 business day.
+                Your request is scored and routed to a rep. Someone will reach out within
+                1 business day.
               </p>
             </div>
           ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSubmitted(true);
-              }}
-              className="space-y-4"
-            >
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="First name" name="firstName" required />
-                <Field label="Last name" name="lastName" required />
+                <Field label="Last name" name="lastName" />
               </div>
               <Field label="Work email" name="email" type="email" required />
               <Field label="Company" name="company" required />
@@ -522,18 +564,31 @@ function ContactSection() {
                 <textarea
                   name="notes"
                   rows={3}
+                  maxLength={1000}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring transition-smooth focus:ring-2"
                   placeholder="Tell us about your current lead flow…"
                 />
               </div>
+              <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                />
+                I agree to receive product updates and nurturing emails from LeadFlow AI.
+                You can withdraw consent at any time (GDPR).
+              </label>
               <button
                 type="submit"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90 disabled:opacity-60"
               >
-                Request demo <ArrowRight className="h-4 w-4" />
+                {loading ? "Submitting…" : "Request demo"}
+                <ArrowRight className="h-4 w-4" />
               </button>
               <p className="text-xs text-muted-foreground">
-                By submitting, you agree to our privacy policy. We'll never share
+                We store your details only to respond to this request. We'll never share
                 your data.
               </p>
             </form>
