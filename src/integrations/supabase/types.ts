@@ -14,16 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lead_activities: {
+        Row: {
+          actor_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          metadata: Json
+          title: string
+          type: string
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          metadata?: Json
+          title: string
+          type: string
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          company: string | null
+          company_size: string | null
+          consent_at: string | null
+          consent_ip: string | null
+          country: string | null
+          created_at: string
+          email: string
+          estimated_value: number
+          first_name: string
+          id: string
+          job_title: string | null
+          last_contacted_at: string | null
+          last_name: string | null
+          marketing_consent: boolean
+          notes: string | null
+          owner_id: string | null
+          phone: string | null
+          score: number
+          score_breakdown: Json
+          source: Database["public"]["Enums"]["lead_source"]
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          company_size?: string | null
+          consent_at?: string | null
+          consent_ip?: string | null
+          country?: string | null
+          created_at?: string
+          email: string
+          estimated_value?: number
+          first_name: string
+          id?: string
+          job_title?: string | null
+          last_contacted_at?: string | null
+          last_name?: string | null
+          marketing_consent?: boolean
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          score?: number
+          score_breakdown?: Json
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          company_size?: string | null
+          consent_at?: string | null
+          consent_ip?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string
+          estimated_value?: number
+          first_name?: string
+          id?: string
+          job_title?: string | null
+          last_contacted_at?: string | null
+          last_name?: string | null
+          marketing_consent?: boolean
+          notes?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          score?: number
+          score_breakdown?: Json
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          job_title: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          job_title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          job_title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "rep"
+      lead_source:
+        | "website_form"
+        | "chatbot"
+        | "webinar"
+        | "referral"
+        | "paid_ads"
+        | "outbound"
+        | "other"
+      lead_status:
+        | "new"
+        | "contacted"
+        | "qualified"
+        | "mql"
+        | "sql"
+        | "meeting"
+        | "won"
+        | "lost"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +339,27 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "rep"],
+      lead_source: [
+        "website_form",
+        "chatbot",
+        "webinar",
+        "referral",
+        "paid_ads",
+        "outbound",
+        "other",
+      ],
+      lead_status: [
+        "new",
+        "contacted",
+        "qualified",
+        "mql",
+        "sql",
+        "meeting",
+        "won",
+        "lost",
+      ],
+    },
   },
 } as const
