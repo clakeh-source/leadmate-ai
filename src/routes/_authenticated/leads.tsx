@@ -12,9 +12,13 @@ import {
   ShieldCheck,
   Mail,
   Building2,
+  Sparkles,
+  Copy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { generateLeadEmail } from "@/lib/aiEmail.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 type Lead = Tables<"leads">;
 
@@ -268,6 +272,92 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+function AiEmailComposer({ leadId }: { leadId: string }) {
+  const queryClient = useQueryClient();
+  const generate = useServerFn(generateLeadEmail);
+  const [tone, setTone] = useState<"friendly" | "direct" | "consultative">("consultative");
+  const [goal, setGoal] = useState<"intro" | "follow_up" | "book_meeting" | "re_engage">(
+    "book_meeting",
+  );
+  const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => generate({ data: { leadId, tone, goal } }),
+    onSuccess: (result) => {
+      setDraft(result);
+      queryClient.invalidateQueries({ queryKey: ["lead-activities", leadId] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Could not generate the email"),
+  });
+
+  return (
+    <div className="mt-6 rounded-xl border border-primary/25 bg-primary/5 p-4">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-medium">AI outreach email</h3>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <select
+          value={goal}
+          onChange={(e) => setGoal(e.target.value as typeof goal)}
+          className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs"
+        >
+          <option value="intro">First touch</option>
+          <option value="follow_up">Follow-up</option>
+          <option value="book_meeting">Book a meeting</option>
+          <option value="re_engage">Re-engage</option>
+        </select>
+        <select
+          value={tone}
+          onChange={(e) => setTone(e.target.value as typeof tone)}
+          className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs"
+        >
+          <option value="consultative">Consultative</option>
+          <option value="friendly">Friendly</option>
+          <option value="direct">Direct</option>
+        </select>
+      </div>
+
+      <button
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-smooth hover:opacity-90 disabled:opacity-60"
+      >
+        {mutation.isPending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Writing draft…
+          </>
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4" /> Generate email
+          </>
+        )}
+      </button>
+
+      {draft && (
+        <div className="mt-4 rounded-lg border border-border bg-card p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Subject
+          </p>
+          <p className="mt-1 text-sm font-medium">{draft.subject}</p>
+          <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{draft.body}</p>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`Subject: ${draft.subject}\n\n${draft.body}`);
+              toast.success("Email copied to clipboard");
+            }}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+          >
+            <Copy className="h-3.5 w-3.5" /> Copy draft
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const breakdown = (lead.score_breakdown ?? {}) as Record<string, number>;
   const { data: activities } = useQuery({
@@ -328,6 +418,8 @@ function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
             ))}
           </div>
         </div>
+
+        <AiEmailComposer leadId={lead.id} />
 
         {lead.notes && (
           <div className="mt-6">

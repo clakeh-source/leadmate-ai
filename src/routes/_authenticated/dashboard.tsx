@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useAnalytics } from "@/lib/useAnalytics";
 import {
   ResponsiveContainer,
   LineChart,
@@ -542,6 +543,8 @@ function ChartTooltip() {
    ============================================================ */
 
 function OverviewTab() {
+  const { KPIS, GROWTH, SOURCES, ACTIVITY, hasData } = useAnalytics();
+  if (!hasData) return <EmptyState />;
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -671,6 +674,25 @@ function OverviewTab() {
   );
 }
 
+function EmptyState() {
+  return (
+    <Card>
+      <div className="py-16 text-center">
+        <p className="text-sm font-semibold">No lead data yet</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Analytics populate automatically as leads come in from your forms and chatbot.
+        </p>
+        <Link
+          to="/leads"
+          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        >
+          Go to Leads <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </Card>
+  );
+}
+
 function Legend2({ items }: { items: [string, string][] }) {
   return (
     <div className="flex items-center gap-3 text-xs">
@@ -689,6 +711,8 @@ function Legend2({ items }: { items: [string, string][] }) {
    ============================================================ */
 
 function LeadsTab() {
+  const { SOURCES, SEGMENTS: INDUSTRIES, SCORE_DISTRIBUTION, hasData } = useAnalytics();
+  if (!hasData) return <EmptyState />;
   return (
     <>
       <section className="grid gap-6 lg:grid-cols-2">
@@ -802,7 +826,9 @@ function Legend3({ dot, label }: { dot: string; label: string }) {
    ============================================================ */
 
 function FunnelTab() {
-  const max = FUNNEL[0].count;
+  const { FUNNEL, hasData } = useAnalytics();
+  const max = FUNNEL[0]?.count ?? 1;
+  if (!hasData) return <EmptyState />;
   return (
     <>
       <Card>
