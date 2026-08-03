@@ -55,6 +55,59 @@ export type Database = {
           },
         ]
       }
+      lead_emails: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          lead_id: string
+          opened_at: string | null
+          provider_message_id: string | null
+          replied_at: string | null
+          sender_id: string | null
+          status: string
+          subject: string
+          to_email: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          opened_at?: string | null
+          provider_message_id?: string | null
+          replied_at?: string | null
+          sender_id?: string | null
+          status?: string
+          subject: string
+          to_email: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          opened_at?: string | null
+          provider_message_id?: string | null
+          replied_at?: string | null
+          sender_id?: string | null
+          status?: string
+          subject?: string
+          to_email?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_emails_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           company: string | null
