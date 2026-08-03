@@ -14,11 +14,14 @@ import {
   Building2,
   Sparkles,
   Copy,
+  Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { generateLeadEmail } from "@/lib/aiEmail.functions";
+import { sendLeadEmail } from "@/lib/sendEmail.functions";
 import { useServerFn } from "@tanstack/react-start";
+
 
 type Lead = Tables<"leads">;
 
@@ -272,9 +275,10 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
-function AiEmailComposer({ leadId }: { leadId: string }) {
+function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
   const queryClient = useQueryClient();
   const generate = useServerFn(generateLeadEmail);
+  const send = useServerFn(sendLeadEmail);
   const [tone, setTone] = useState<"friendly" | "direct" | "consultative">("consultative");
   const [goal, setGoal] = useState<"intro" | "follow_up" | "book_meeting" | "re_engage">(
     "book_meeting",
@@ -289,6 +293,17 @@ function AiEmailComposer({ leadId }: { leadId: string }) {
     },
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : "Could not generate the email"),
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: () =>
+      send({ data: { leadId, subject: draft!.subject.trim(), body: draft!.body.trim() } }),
+    onSuccess: (result) => {
+      toast.success(`Email sent to ${result.to}`);
+      queryClient.invalidateQueries({ queryKey: ["lead-activities", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not send the email"),
   });
 
   return (
@@ -338,11 +353,42 @@ function AiEmailComposer({ leadId }: { leadId: string }) {
 
       {draft && (
         <div className="mt-4 rounded-lg border border-border bg-card p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Subject
-          </p>
-          <p className="mt-1 text-sm font-medium">{draft.subject}</p>
-          <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{draft.body}</p>
+          </label>
+          <input
+            value={draft.subject}
+            onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm font-medium"
+          />
+          <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Body
+          </label>
+          <textarea
+            value={draft.body}
+            onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+            rows={10}
+            className="mt-1 w-full resize-y rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-muted-foreground"
+          />
+
+          <button
+            onClick={() => sendMutation.mutate()}
+            disabled={
+              sendMutation.isPending || !draft.subject.trim() || !draft.body.trim()
+            }
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background transition-smooth hover:opacity-90 disabled:opacity-60"
+          >
+            {sendMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" /> Send to {email}
+              </>
+            )}
+          </button>
+
           <button
             onClick={() => {
               navigator.clipboard.writeText(`Subject: ${draft.subject}\n\n${draft.body}`);
@@ -357,6 +403,7 @@ function AiEmailComposer({ leadId }: { leadId: string }) {
     </div>
   );
 }
+
 
 function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const breakdown = (lead.score_breakdown ?? {}) as Record<string, number>;
@@ -419,7 +466,7 @@ function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
           </div>
         </div>
 
-        <AiEmailComposer leadId={lead.id} />
+        <AiEmailComposer leadId={lead.id} email={lead.email} />
 
         {lead.notes && (
           <div className="mt-6">
