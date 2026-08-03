@@ -105,8 +105,9 @@ export const Route = createFileRoute("/api/public/webhooks/resend")({
           .maybeSingle();
         if (!emailRow) return new Response("ok");
 
-        const update: Record<string, unknown> = { status: mapped.status };
-        if (mapped.status === "opened") update["opened_at"] = new Date().toISOString();
+        const update: { status: string; opened_at?: string } = { status: mapped.status };
+        if (mapped.status === "opened") update.opened_at = new Date().toISOString();
+
         // Don't downgrade a stronger signal
         if (!(emailRow.status === "opened" && mapped.status === "delivered")) {
           await supabaseAdmin.from("lead_emails").update(update).eq("id", emailRow.id);
