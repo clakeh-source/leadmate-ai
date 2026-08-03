@@ -466,7 +466,7 @@ function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
           </div>
         </div>
 
-        <AiEmailComposer leadId={lead.id} />
+        <AiEmailComposer leadId={lead.id} email={lead.email} />
 
         {lead.notes && (
           <div className="mt-6">
