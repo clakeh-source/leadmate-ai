@@ -14,11 +14,14 @@ import {
   Building2,
   Sparkles,
   Copy,
+  Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { generateLeadEmail } from "@/lib/aiEmail.functions";
+import { sendLeadEmail } from "@/lib/sendEmail.functions";
 import { useServerFn } from "@tanstack/react-start";
+
 
 type Lead = Tables<"leads">;
 
