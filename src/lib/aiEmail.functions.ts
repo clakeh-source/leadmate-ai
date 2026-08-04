@@ -16,7 +16,7 @@ export const generateLeadEmail = createServerFn({ method: "POST" })
     const { data: lead, error } = await supabase
       .from("leads")
       .select(
-        "id, first_name, last_name, company, company_size, job_title, country, source, status, score, notes",
+        "id, workspace_id, first_name, last_name, company, company_size, job_title, country, source, status, score, notes",
       )
       .eq("id", data.leadId)
       .maybeSingle();
@@ -87,6 +87,7 @@ Our product: LeadFlow AI — an AI-assisted SDR platform that captures, scores, 
     const body = parsed.body ?? "";
 
     await supabase.from("lead_activities").insert({
+      workspace_id: lead.workspace_id,
       lead_id: lead.id,
       actor_id: context.userId,
       type: "ai_email",
