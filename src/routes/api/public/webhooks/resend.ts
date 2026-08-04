@@ -75,12 +75,13 @@ export const Route = createFileRoute("/api/public/webhooks/resend")({
           if (!fromAddress) return new Response("ok");
           const { data: lead } = await supabaseAdmin
             .from("leads")
-            .select("id")
+            .select("id, workspace_id")
             .ilike("email", fromAddress)
             .maybeSingle();
           if (!lead) return new Response("ok");
 
           await supabaseAdmin.from("lead_activities").insert({
+            workspace_id: lead.workspace_id,
             lead_id: lead.id,
             type: "email_replied",
             title: `Lead replied — ${event.data?.subject ?? "(no subject)"}`,
@@ -100,7 +101,7 @@ export const Route = createFileRoute("/api/public/webhooks/resend")({
 
         const { data: emailRow } = await supabaseAdmin
           .from("lead_emails")
-          .select("id, lead_id, subject, status")
+          .select("id, lead_id, subject, status, workspace_id, to_email")
           .eq("provider_message_id", messageId)
           .maybeSingle();
         if (!emailRow) return new Response("ok");
@@ -114,6 +115,7 @@ export const Route = createFileRoute("/api/public/webhooks/resend")({
         }
 
         await supabaseAdmin.from("lead_activities").insert({
+          workspace_id: emailRow.workspace_id,
           lead_id: emailRow.lead_id,
           type: mapped.type,
           title: `${mapped.title} — ${emailRow.subject}`,
@@ -123,6 +125,24 @@ export const Route = createFileRoute("/api/public/webhooks/resend")({
             link: event.data?.click?.link ?? null,
           },
         });
+
+        // Compliance: hard signals suppress the address for the workspace
+        if (mapped.status === "bounced" || mapped.status === "complained") {
+          await supabaseAdmin.from("suppression_list").upsert(
+            {
+              workspace_id: emailRow.workspace_id,
+              email: emailRow.to_email.toLowerCase(),
+              reason: mapped.status === "bounced" ? "hard_bounce" : "spam_complaint",
+              source: "resend_webhook",
+            },
+            { onConflict: "workspace_id,email" },
+          );
+          await supabaseAdmin
+            .from("leads")
+            .update({ do_not_contact: true })
+            .eq("id", emailRow.lead_id);
+        }
+
 
         return new Response("ok");
       },

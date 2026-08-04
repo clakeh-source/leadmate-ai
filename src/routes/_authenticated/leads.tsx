@@ -78,7 +78,15 @@ function LeadsPage() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, next }: { id: string; next: string }) => {
+    mutationFn: async ({
+      id,
+      next,
+      workspaceId,
+    }: {
+      id: string;
+      next: string;
+      workspaceId: string;
+    }) => {
       const { error } = await supabase
         .from("leads")
         .update({ status: next as Lead["status"] })
@@ -86,6 +94,7 @@ function LeadsPage() {
       if (error) throw error;
       const { data: userData } = await supabase.auth.getUser();
       await supabase.from("lead_activities").insert({
+        workspace_id: workspaceId,
         lead_id: id,
         actor_id: userData.user?.id ?? null,
         type: "status_change",
@@ -228,7 +237,11 @@ function LeadsPage() {
                       <select
                         value={lead.status}
                         onChange={(e) =>
-                          updateStatus.mutate({ id: lead.id, next: e.target.value })
+                          updateStatus.mutate({
+                            id: lead.id,
+                            next: e.target.value,
+                            workspaceId: lead.workspace_id,
+                          })
                         }
                         className="rounded-md border border-input bg-background px-2 py-1 text-xs outline-none ring-ring focus:ring-2"
                       >

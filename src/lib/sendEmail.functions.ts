@@ -29,17 +29,29 @@ export const sendLeadEmail = createServerFn({ method: "POST" })
 
     const { data: lead, error } = await supabase
       .from("leads")
-      .select("id, first_name, last_name, email, marketing_consent")
+      .select("id, workspace_id, first_name, last_name, email, marketing_consent, do_not_contact")
       .eq("id", data.leadId)
       .maybeSingle();
     if (error) throw error;
     if (!lead) throw new Error("Lead not found");
+    if (lead.do_not_contact) throw new Error("This lead is marked do-not-contact.");
+
+    const { data: suppressed } = await supabase
+      .from("suppression_list")
+      .select("reason")
+      .eq("workspace_id", lead.workspace_id)
+      .eq("email", lead.email.toLowerCase())
+      .maybeSingle();
+    if (suppressed) {
+      throw new Error(`This address is suppressed (${suppressed.reason}) and cannot be emailed.`);
+    }
 
     const lovableKey = process.env["LOVABLE_API_KEY"];
     const resendKey = process.env["RESEND_API_KEY"];
     if (!lovableKey || !resendKey) throw new Error("Email sending is not configured");
 
     const from = process.env["RESEND_FROM_EMAIL"] ?? "LeadFlow AI <onboarding@resend.dev>";
+
 
     const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
       method: "POST",
@@ -69,6 +81,7 @@ export const sendLeadEmail = createServerFn({ method: "POST" })
     const { data: row } = await supabase
       .from("lead_emails")
       .insert({
+        workspace_id: lead.workspace_id,
         lead_id: lead.id,
         sender_id: userId,
         to_email: lead.email,
@@ -81,6 +94,7 @@ export const sendLeadEmail = createServerFn({ method: "POST" })
       .maybeSingle();
 
     await supabase.from("lead_activities").insert({
+      workspace_id: lead.workspace_id,
       lead_id: lead.id,
       actor_id: userId,
       type: "email_sent",

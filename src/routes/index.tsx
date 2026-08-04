@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { captureInboundLead } from "@/lib/publicLead.functions";
 import heroImage from "@/assets/hero.jpg";
 import {
   Bot,
@@ -501,23 +501,25 @@ function ContactSection() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.from("leads").insert({
-      first_name: parsed.data.firstName,
-      last_name: parsed.data.lastName || null,
-      email: parsed.data.email,
-      company: parsed.data.company,
-      company_size: parsed.data.size || null,
-      notes: parsed.data.notes || null,
-      source: "website_form",
-      marketing_consent: consent,
-      consent_at: consent ? new Date().toISOString() : null,
-    });
-    setLoading(false);
-    if (error) {
+    try {
+      await captureInboundLead({
+        data: {
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          email: parsed.data.email,
+          company: parsed.data.company,
+          companySize: parsed.data.size,
+          notes: parsed.data.notes,
+          marketingConsent: consent,
+          source: "website_form",
+        },
+      });
+      setSubmitted(true);
+    } catch {
       toast.error("We couldn't submit your request. Please try again.");
-      return;
+    } finally {
+      setLoading(false);
     }
-    setSubmitted(true);
   }
 
   return (
