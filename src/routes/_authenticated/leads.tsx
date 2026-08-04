@@ -237,7 +237,11 @@ function LeadsPage() {
                       <select
                         value={lead.status}
                         onChange={(e) =>
-                          updateStatus.mutate({ id: lead.id, next: e.target.value })
+                          updateStatus.mutate({
+                            id: lead.id,
+                            next: e.target.value,
+                            workspaceId: lead.workspace_id,
+                          })
                         }
                         className="rounded-md border border-input bg-background px-2 py-1 text-xs outline-none ring-ring focus:ring-2"
                       >
