@@ -81,6 +81,7 @@ export const sendLeadEmail = createServerFn({ method: "POST" })
     const { data: row } = await supabase
       .from("lead_emails")
       .insert({
+        workspace_id: lead.workspace_id,
         lead_id: lead.id,
         sender_id: userId,
         to_email: lead.email,
@@ -93,6 +94,7 @@ export const sendLeadEmail = createServerFn({ method: "POST" })
       .maybeSingle();
 
     await supabase.from("lead_activities").insert({
+      workspace_id: lead.workspace_id,
       lead_id: lead.id,
       actor_id: userId,
       type: "email_sent",
