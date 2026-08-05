@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQuery, useQueryClient, useMutation, keepPreviousData } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Zap,
@@ -15,15 +15,19 @@ import {
   Sparkles,
   Copy,
   Send,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
 import { generateLeadEmail } from "@/lib/aiEmail.functions";
 import { sendLeadEmail } from "@/lib/sendEmail.functions";
+import {
+  listLeads,
+  changeLeadStatus,
+  getLeadActivities,
+  type LeadRow,
+} from "@/lib/leads.functions";
 import { useServerFn } from "@tanstack/react-start";
-
-
-type Lead = Tables<"leads">;
 
 const STATUSES = [
   "new",
@@ -35,6 +39,9 @@ const STATUSES = [
   "won",
   "lost",
 ] as const;
+
+type StatusFilter = (typeof STATUSES)[number] | "all";
+type SortKey = "created_at" | "score" | "last_touch_at";
 
 export const Route = createFileRoute("/_authenticated/leads")({
   head: () => ({
@@ -60,62 +67,58 @@ export const Route = createFileRoute("/_authenticated/leads")({
 function LeadsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<string>("all");
-  const [selected, setSelected] = useState<Lead | null>(null);
+  const fetchLeads = useServerFn(listLeads);
+  const setStatusFn = useServerFn(changeLeadStatus);
 
-  const { data: leads, isLoading } = useQuery({
-    queryKey: ["leads"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return data;
-    },
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [minScore, setMinScore] = useState<number>(0);
+  const [sort, setSort] = useState<SortKey>("created_at");
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
+  const [selected, setSelected] = useState<LeadRow | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebounced(query.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const filters = {
+    page,
+    pageSize,
+    sort,
+    direction: "desc" as const,
+    ...(debounced ? { search: debounced } : {}),
+    ...(status !== "all" ? { status } : {}),
+    ...(minScore > 0 ? { minScore } : {}),
+  };
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["leads", filters],
+    queryFn: () => fetchLeads({ data: filters }),
+    placeholderData: keepPreviousData,
   });
+
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const updateStatus = useMutation({
-    mutationFn: async ({
-      id,
-      next,
-      workspaceId,
-    }: {
-      id: string;
-      next: string;
-      workspaceId: string;
-    }) => {
-      const { error } = await supabase
-        .from("leads")
-        .update({ status: next as Lead["status"] })
-        .eq("id", id);
-      if (error) throw error;
-      const { data: userData } = await supabase.auth.getUser();
-      await supabase.from("lead_activities").insert({
-        workspace_id: workspaceId,
-        lead_id: id,
-        actor_id: userData.user?.id ?? null,
-        type: "status_change",
-        title: `Status changed to ${next}`,
-      });
-    },
-    onSuccess: () => {
+    mutationFn: (vars: { leadId: string; status: (typeof STATUSES)[number] }) =>
+      setStatusFn({ data: vars }),
+    onSuccess: (updated) => {
       toast.success("Lead updated");
+      setSelected((current) => (current && current.id === updated.id ? updated : current));
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-activities", updated.id] });
     },
-    onError: () => toast.error("Could not update lead"),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Could not update lead"),
   });
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (leads ?? []).filter((l) => {
-      const matchesStatus = status === "all" || l.status === status;
-      const haystack = `${l.first_name} ${l.last_name ?? ""} ${l.email} ${l.company ?? ""}`.toLowerCase();
-      return matchesStatus && (!q || haystack.includes(q));
-    });
-  }, [leads, query, status]);
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -172,7 +175,10 @@ function LeadsPage() {
           </div>
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => {
+              setStatus(e.target.value as StatusFilter);
+              setPage(1);
+            }}
             className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
           >
             <option value="all">All statuses</option>
@@ -182,6 +188,31 @@ function LeadsPage() {
               </option>
             ))}
           </select>
+          <select
+            value={minScore}
+            onChange={(e) => {
+              setMinScore(Number(e.target.value));
+              setPage(1);
+            }}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          >
+            <option value={0}>Any score</option>
+            <option value={45}>Score 45+</option>
+            <option value={70}>Score 70+ (MQL)</option>
+            <option value={85}>Score 85+</option>
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value as SortKey);
+              setPage(1);
+            }}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          >
+            <option value="created_at">Newest first</option>
+            <option value="score">Highest score</option>
+            <option value="last_touch_at">Recently touched</option>
+          </select>
         </div>
 
         <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-elegant">
@@ -189,9 +220,9 @@ function LeadsPage() {
             <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading leads…
             </div>
-          ) : filtered.length === 0 ? (
+          ) : rows.length === 0 ? (
             <div className="py-20 text-center">
-              <p className="text-sm font-medium">No leads yet</p>
+              <p className="text-sm font-medium">No leads match these filters</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Submit the demo form on the landing page to see scoring in action.
               </p>
@@ -209,7 +240,7 @@ function LeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((lead) => (
+                {rows.map((lead) => (
                   <tr
                     key={lead.id}
                     onClick={() => setSelected(lead)}
@@ -236,14 +267,14 @@ function LeadsPage() {
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={lead.status}
+                        disabled={updateStatus.isPending}
                         onChange={(e) =>
                           updateStatus.mutate({
-                            id: lead.id,
-                            next: e.target.value,
-                            workspaceId: lead.workspace_id,
+                            leadId: lead.id,
+                            status: e.target.value as (typeof STATUSES)[number],
                           })
                         }
-                        className="rounded-md border border-input bg-background px-2 py-1 text-xs outline-none ring-ring focus:ring-2"
+                        className="rounded-md border border-input bg-background px-2 py-1 text-xs outline-none ring-ring focus:ring-2 disabled:opacity-60"
                       >
                         {STATUSES.map((s) => (
                           <option key={s} value={s}>
@@ -266,6 +297,34 @@ function LeadsPage() {
               </tbody>
             </table>
           )}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            {total > 0
+              ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total} leads`
+              : "0 leads"}
+            {isFetching && !isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="inline-flex items-center gap-1 rounded-lg border border-input px-3 py-1.5 transition-smooth hover:bg-accent disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" /> Prev
+            </button>
+            <span className="text-xs">
+              Page {page} / {pageCount}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              disabled={page >= pageCount}
+              className="inline-flex items-center gap-1 rounded-lg border border-input px-3 py-1.5 transition-smooth hover:bg-accent disabled:opacity-40"
+            >
+              Next <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {selected && <LeadDetail lead={selected} onClose={() => setSelected(null)} />}
@@ -386,9 +445,7 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
 
           <button
             onClick={() => sendMutation.mutate()}
-            disabled={
-              sendMutation.isPending || !draft.subject.trim() || !draft.body.trim()
-            }
+            disabled={sendMutation.isPending || !draft.subject.trim() || !draft.body.trim()}
             className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background transition-smooth hover:opacity-90 disabled:opacity-60"
           >
             {sendMutation.isPending ? (
@@ -417,20 +474,12 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
   );
 }
 
-
-function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+function LeadDetail({ lead, onClose }: { lead: LeadRow; onClose: () => void }) {
   const breakdown = (lead.score_breakdown ?? {}) as Record<string, number>;
+  const fetchActivities = useServerFn(getLeadActivities);
   const { data: activities } = useQuery({
     queryKey: ["lead-activities", lead.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("lead_activities")
-        .select("*")
-        .eq("lead_id", lead.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchActivities({ data: { leadId: lead.id } }),
   });
 
   return (

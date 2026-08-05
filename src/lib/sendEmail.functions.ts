@@ -46,6 +46,21 @@ export const sendLeadEmail = createServerFn({ method: "POST" })
       throw new Error(`This address is suppressed (${suppressed.reason}) and cannot be emailed.`);
     }
 
+    // Outbound rate limiting: respect the workspace's configured daily send cap.
+    const [{ data: sentToday }, { data: workspace }] = await Promise.all([
+      supabase.rpc("workspace_emails_sent_today", { _workspace_id: lead.workspace_id }),
+      supabase
+        .from("workspaces")
+        .select("daily_email_limit")
+        .eq("id", lead.workspace_id)
+        .maybeSingle(),
+    ]);
+    const limit = workspace?.daily_email_limit ?? 200;
+    if ((sentToday ?? 0) >= limit) {
+      throw new Error(`Daily sending limit reached (${limit} emails). Try again tomorrow.`);
+    }
+
+
     const lovableKey = process.env["LOVABLE_API_KEY"];
     const resendKey = process.env["RESEND_API_KEY"];
     if (!lovableKey || !resendKey) throw new Error("Email sending is not configured");
