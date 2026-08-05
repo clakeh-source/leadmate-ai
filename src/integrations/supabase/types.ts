@@ -629,6 +629,54 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      change_lead_status: {
+        Args: {
+          _lead_id: string
+          _next: Database["public"]["Enums"]["lead_status"]
+          _note?: string
+        }
+        Returns: {
+          company: string | null
+          company_domain: string | null
+          company_size: string | null
+          consent_at: string | null
+          consent_ip: string | null
+          country: string | null
+          created_at: string
+          do_not_contact: boolean
+          email: string
+          estimated_value: number
+          first_name: string
+          first_touch_at: string | null
+          id: string
+          job_title: string | null
+          last_contacted_at: string | null
+          last_name: string | null
+          last_touch_at: string | null
+          linkedin_url: string | null
+          marketing_consent: boolean
+          normalized_email: string | null
+          normalized_phone: string | null
+          notes: string | null
+          owner_id: string | null
+          phone: string | null
+          score: number
+          score_breakdown: Json
+          source: Database["public"]["Enums"]["lead_source"]
+          source_record_id: string | null
+          source_url: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+          utm: Json
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       current_workspace_ids: { Args: never; Returns: string[] }
       has_role: {
         Args: {
@@ -645,6 +693,10 @@ export type Database = {
         Returns: boolean
       }
       is_workspace_member: { Args: { _workspace_id: string }; Returns: boolean }
+      workspace_emails_sent_today: {
+        Args: { _workspace_id: string }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "rep"
