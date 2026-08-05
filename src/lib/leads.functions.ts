@@ -105,7 +105,7 @@ export const changeLeadStatus = createServerFn({ method: "POST" })
     const { data: updated, error } = await context.supabase.rpc("change_lead_status", {
       _lead_id: data.leadId,
       _next: data.status,
-      _note: data.note ?? null,
+      _note: data.note,
     });
     if (error) throw new Error(error.message);
     return updated as unknown as LeadRow;
