@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ApiPublicWebhooksResendRouteImport } from './routes/api/public/webhooks/resend'
+import { Route as ApiPublicHooksEmailQueueRouteImport } from './routes/api/public/hooks/email-queue'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -45,12 +46,19 @@ const ApiPublicWebhooksResendRoute = ApiPublicWebhooksResendRouteImport.update({
   path: '/api/public/webhooks/resend',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksEmailQueueRoute =
+  ApiPublicHooksEmailQueueRouteImport.update({
+    id: '/api/public/hooks/email-queue',
+    path: '/api/public/hooks/email-queue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
   '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
 }
 export interface FileRoutesByTo {
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
   '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
 }
 export interface FileRoutesById {
@@ -67,6 +76,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
+  '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
   '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
 }
 export interface FileRouteTypes {
@@ -76,9 +86,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/leads'
+    | '/api/public/hooks/email-queue'
     | '/api/public/webhooks/resend'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/leads' | '/api/public/webhooks/resend'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/leads'
+    | '/api/public/hooks/email-queue'
+    | '/api/public/webhooks/resend'
   id:
     | '__root__'
     | '/'
@@ -86,6 +103,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/leads'
+    | '/api/public/hooks/email-queue'
     | '/api/public/webhooks/resend'
   fileRoutesById: FileRoutesById
 }
@@ -93,6 +111,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicHooksEmailQueueRoute: typeof ApiPublicHooksEmailQueueRoute
   ApiPublicWebhooksResendRoute: typeof ApiPublicWebhooksResendRoute
 }
 
@@ -140,6 +159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksResendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/email-queue': {
+      id: '/api/public/hooks/email-queue'
+      path: '/api/public/hooks/email-queue'
+      fullPath: '/api/public/hooks/email-queue'
+      preLoaderRoute: typeof ApiPublicHooksEmailQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -160,6 +186,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicHooksEmailQueueRoute: ApiPublicHooksEmailQueueRoute,
   ApiPublicWebhooksResendRoute: ApiPublicWebhooksResendRoute,
 }
 export const routeTree = rootRouteImport

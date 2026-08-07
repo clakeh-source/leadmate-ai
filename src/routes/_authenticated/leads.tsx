@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { generateLeadEmail } from "@/lib/aiEmail.functions";
 import { sendLeadEmail } from "@/lib/sendEmail.functions";
+import { queueLeadEmail } from "@/lib/emailQueue.functions";
 import {
   listLeads,
   changeLeadStatus,
@@ -351,6 +352,7 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
   const queryClient = useQueryClient();
   const generate = useServerFn(generateLeadEmail);
   const send = useServerFn(sendLeadEmail);
+  const queueEmail = useServerFn(queueLeadEmail);
   const [tone, setTone] = useState<"friendly" | "direct" | "consultative">("consultative");
   const [goal, setGoal] = useState<"intro" | "follow_up" | "book_meeting" | "re_engage">(
     "book_meeting",
@@ -377,6 +379,17 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "Could not send the email"),
   });
+
+  const queueMutation = useMutation({
+    mutationFn: () =>
+      queueEmail({ data: { leadId, subject: draft!.subject.trim(), body: draft!.body.trim() } }),
+    onSuccess: () => {
+      toast.success("Queued — the worker will send it shortly");
+      queryClient.invalidateQueries({ queryKey: ["lead-activities", leadId] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not queue the email"),
+  });
+
 
   return (
     <div className="mt-6 rounded-xl border border-primary/25 bg-primary/5 p-4">
@@ -457,6 +470,14 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
                 <Send className="h-4 w-4" /> Send to {email}
               </>
             )}
+          </button>
+
+          <button
+            onClick={() => queueMutation.mutate()}
+            disabled={queueMutation.isPending || !draft.subject.trim() || !draft.body.trim()}
+            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-input px-3 py-2 text-sm font-medium transition-smooth hover:bg-muted disabled:opacity-60"
+          >
+            {queueMutation.isPending ? "Queueing…" : "Queue for later"}
           </button>
 
           <button
