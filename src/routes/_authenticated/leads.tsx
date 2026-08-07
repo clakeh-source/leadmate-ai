@@ -378,6 +378,17 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
     onError: (err) => toast.error(err instanceof Error ? err.message : "Could not send the email"),
   });
 
+  const queueMutation = useMutation({
+    mutationFn: () =>
+      queueEmail({ data: { leadId, subject: draft!.subject.trim(), body: draft!.body.trim() } }),
+    onSuccess: () => {
+      toast.success("Queued — the worker will send it shortly");
+      queryClient.invalidateQueries({ queryKey: ["lead-activities", leadId] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not queue the email"),
+  });
+
+
   return (
     <div className="mt-6 rounded-xl border border-primary/25 bg-primary/5 p-4">
       <div className="flex items-center gap-2">
