@@ -7,6 +7,7 @@ import {
   Search,
   LogOut,
   LayoutDashboard,
+  Megaphone,
   Users,
   Loader2,
   ShieldCheck,
@@ -148,6 +149,13 @@ function LeadsPage() {
             <span className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 font-medium">
               <Users className="h-4 w-4" /> Leads
             </span>
+            <Link
+              to="/campaigns"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-smooth hover:bg-accent hover:text-foreground"
+            >
+              <Megaphone className="h-4 w-4" /> Campaigns
+            </Link>
+
             <button
               onClick={signOut}
               className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-smooth hover:bg-accent hover:text-foreground"

@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCampaignsRouteImport } from './routes/_authenticated/campaigns'
 import { Route as ApiPublicWebhooksResendRouteImport } from './routes/api/public/webhooks/resend'
 import { Route as ApiPublicHooksEmailQueueRouteImport } from './routes/api/public/hooks/email-queue'
 
@@ -41,6 +42,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCampaignsRoute = AuthenticatedCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicWebhooksResendRoute = ApiPublicWebhooksResendRouteImport.update({
   id: '/api/public/webhooks/resend',
   path: '/api/public/webhooks/resend',
@@ -56,6 +62,7 @@ const ApiPublicHooksEmailQueueRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/campaigns': typeof AuthenticatedCampaignsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/campaigns': typeof AuthenticatedCampaignsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
@@ -74,6 +82,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/campaigns': typeof AuthenticatedCampaignsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
@@ -84,6 +93,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/campaigns'
     | '/dashboard'
     | '/leads'
     | '/api/public/hooks/email-queue'
@@ -92,6 +102,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/campaigns'
     | '/dashboard'
     | '/leads'
     | '/api/public/hooks/email-queue'
@@ -101,6 +112,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/campaigns'
     | '/_authenticated/dashboard'
     | '/_authenticated/leads'
     | '/api/public/hooks/email-queue'
@@ -152,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/campaigns': {
+      id: '/_authenticated/campaigns'
+      path: '/campaigns'
+      fullPath: '/campaigns'
+      preLoaderRoute: typeof AuthenticatedCampaignsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/webhooks/resend': {
       id: '/api/public/webhooks/resend'
       path: '/api/public/webhooks/resend'
@@ -170,11 +189,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCampaignsRoute: typeof AuthenticatedCampaignsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCampaignsRoute: AuthenticatedCampaignsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
 }
