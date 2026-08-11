@@ -7,6 +7,7 @@ import {
   Search,
   LogOut,
   LayoutDashboard,
+  Megaphone,
   Users,
   Loader2,
   ShieldCheck,
