@@ -70,3 +70,9 @@ export const importSchema = z.object({
 });
 
 export const workspaceScopeSchema = z.object({ workspaceId: z.string().uuid() });
+
+export const sequenceActiveSchema = z.object({
+  workspaceId: z.string().uuid(),
+  sequenceId: z.string().uuid(),
+  isActive: z.boolean(),
+});

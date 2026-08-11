@@ -4,6 +4,7 @@ import {
   campaignInputSchema,
   campaignStatusSchema,
   enrollSchema,
+  sequenceActiveSchema,
   sequenceInputSchema,
   workspaceScopeSchema,
 } from "@/lib/campaigns.schemas";
@@ -218,32 +219,23 @@ export const enrollLeads = createServerFn({ method: "POST" })
     };
   });
 
-/** Pauses or stops every active enrollment on a sequence. */
+/** Pauses or resumes a sequence and its active enrollments. */
 export const setSequenceActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    workspaceScopeSchema
-      .extend(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {} as any,
-      )
-      .passthrough()
-      .parse(input),
-  )
+  .inputValidator((input: unknown) => sequenceActiveSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const payload = data as { workspaceId: string; sequenceId: string; isActive: boolean };
     const { error } = await context.supabase
       .from("sequences")
-      .update({ is_active: payload.isActive })
-      .eq("id", payload.sequenceId)
-      .eq("workspace_id", payload.workspaceId);
+      .update({ is_active: data.isActive })
+      .eq("id", data.sequenceId)
+      .eq("workspace_id", data.workspaceId);
     if (error) throw new Error(error.message);
 
     await context.supabase
       .from("sequence_enrollments")
-      .update({ status: payload.isActive ? "active" : "paused" })
-      .eq("sequence_id", payload.sequenceId)
-      .in("status", payload.isActive ? ["paused"] : ["active"]);
+      .update({ status: data.isActive ? "active" : "paused" })
+      .eq("sequence_id", data.sequenceId)
+      .in("status", data.isActive ? ["paused"] : ["active"]);
 
-    return { isActive: payload.isActive };
+    return { isActive: data.isActive };
   });
