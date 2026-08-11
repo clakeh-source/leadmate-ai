@@ -179,7 +179,7 @@ export const enrichExistingLeads = createServerFn({ method: "POST" })
           company_domain: enriched.companyDomain,
           industry: enriched.industry,
           company_size: enriched.companySize ?? lead.company_size,
-          enrichment: enriched.enrichment,
+          enrichment: enriched.enrichment as unknown as never,
           enriched_at: new Date().toISOString(),
         })
         .eq("id", lead.id);
