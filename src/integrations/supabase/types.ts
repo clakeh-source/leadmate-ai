@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          goal: string
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["campaign_status"]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          goal?: string
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          goal?: string
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_events: {
         Row: {
           created_at: string
@@ -345,6 +389,53 @@ export type Database = {
           },
         ]
       }
+      lead_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duplicate_rows: number
+          errors: Json
+          filename: string | null
+          id: string
+          inserted_rows: number
+          invalid_rows: number
+          total_rows: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duplicate_rows?: number
+          errors?: Json
+          filename?: string | null
+          id?: string
+          inserted_rows?: number
+          invalid_rows?: number
+          total_rows?: number
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duplicate_rows?: number
+          errors?: Json
+          filename?: string | null
+          id?: string
+          inserted_rows?: number
+          invalid_rows?: number
+          total_rows?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_imports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           company: string | null
@@ -356,10 +447,13 @@ export type Database = {
           created_at: string
           do_not_contact: boolean
           email: string
+          enriched_at: string | null
+          enrichment: Json
           estimated_value: number
           first_name: string
           first_touch_at: string | null
           id: string
+          industry: string | null
           job_title: string | null
           last_contacted_at: string | null
           last_name: string | null
@@ -391,10 +485,13 @@ export type Database = {
           created_at?: string
           do_not_contact?: boolean
           email: string
+          enriched_at?: string | null
+          enrichment?: Json
           estimated_value?: number
           first_name: string
           first_touch_at?: string | null
           id?: string
+          industry?: string | null
           job_title?: string | null
           last_contacted_at?: string | null
           last_name?: string | null
@@ -426,10 +523,13 @@ export type Database = {
           created_at?: string
           do_not_contact?: boolean
           email?: string
+          enriched_at?: string | null
+          enrichment?: Json
           estimated_value?: number
           first_name?: string
           first_touch_at?: string | null
           id?: string
+          industry?: string | null
           job_title?: string | null
           last_contacted_at?: string | null
           last_name?: string | null
@@ -490,6 +590,188 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sequence_enrollments: {
+        Row: {
+          campaign_id: string | null
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          enrolled_by: string | null
+          id: string
+          last_error: string | null
+          lead_id: string
+          next_run_at: string
+          sequence_id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          enrolled_by?: string | null
+          id?: string
+          last_error?: string | null
+          lead_id: string
+          next_run_at?: string
+          sequence_id: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          enrolled_by?: string | null
+          id?: string
+          last_error?: string | null
+          lead_id?: string
+          next_run_at?: string
+          sequence_id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_enrollments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_enrollments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_enrollments_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_enrollments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequence_steps: {
+        Row: {
+          body_template: string | null
+          created_at: string
+          goal: string
+          id: string
+          sequence_id: string
+          step_order: number
+          subject_template: string | null
+          tone: string
+          use_ai: boolean
+          wait_hours: number
+          workspace_id: string
+        }
+        Insert: {
+          body_template?: string | null
+          created_at?: string
+          goal?: string
+          id?: string
+          sequence_id: string
+          step_order: number
+          subject_template?: string | null
+          tone?: string
+          use_ai?: boolean
+          wait_hours?: number
+          workspace_id: string
+        }
+        Update: {
+          body_template?: string | null
+          created_at?: string
+          goal?: string
+          id?: string
+          sequence_id?: string
+          step_order?: number
+          subject_template?: string | null
+          tone?: string
+          use_ai?: boolean
+          wait_hours?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_steps_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequence_steps_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequences: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          stop_on_reply: boolean
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          stop_on_reply?: boolean
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          stop_on_reply?: boolean
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequences_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequences_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppression_list: {
         Row: {
@@ -645,10 +927,13 @@ export type Database = {
           created_at: string
           do_not_contact: boolean
           email: string
+          enriched_at: string | null
+          enrichment: Json
           estimated_value: number
           first_name: string
           first_touch_at: string | null
           id: string
+          industry: string | null
           job_title: string | null
           last_contacted_at: string | null
           last_name: string | null
@@ -700,6 +985,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "rep"
+      campaign_status: "draft" | "active" | "paused" | "completed" | "archived"
       consent_status: "granted" | "withdrawn" | "pending" | "not_required"
       email_event_type:
         | "queued"
@@ -721,6 +1007,12 @@ export type Database = {
         | "failed"
         | "cancelled"
         | "suppressed"
+      enrollment_status:
+        | "active"
+        | "paused"
+        | "completed"
+        | "stopped"
+        | "failed"
       lawful_basis:
         | "consent"
         | "legitimate_interest"
@@ -878,6 +1170,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "rep"],
+      campaign_status: ["draft", "active", "paused", "completed", "archived"],
       consent_status: ["granted", "withdrawn", "pending", "not_required"],
       email_event_type: [
         "queued",
@@ -901,6 +1194,7 @@ export const Constants = {
         "cancelled",
         "suppressed",
       ],
+      enrollment_status: ["active", "paused", "completed", "stopped", "failed"],
       lawful_basis: [
         "consent",
         "legitimate_interest",
