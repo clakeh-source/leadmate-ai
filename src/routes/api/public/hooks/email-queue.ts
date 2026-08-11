@@ -18,9 +18,10 @@ export const Route = createFileRoute("/api/public/hooks/email-queue")({
         }
 
         try {
-          const { drainEmailQueue } = await import("@/lib/emailSender.server");
+          const { drainEmailQueue, advanceSequences } = await import("@/lib/emailSender.server");
+          const sequences = await advanceSequences(50);
           const summary = await drainEmailQueue(25);
-          return Response.json({ ok: true, ...summary });
+          return Response.json({ ok: true, ...summary, sequences });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error(`Email queue worker failed: ${message}`);
