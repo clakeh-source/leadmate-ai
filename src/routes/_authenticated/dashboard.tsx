@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAnalytics } from "@/lib/useAnalytics";
 import {
   ResponsiveContainer,
@@ -30,7 +31,7 @@ import {
   Activity,
   Zap,
   Mail,
-  Bot,
+  
   BarChart3,
   Sparkles,
   Download,
@@ -70,188 +71,13 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
-/* ============================================================
-   MOCK DATA (Phase 2 will replace with Lovable Cloud queries)
-   ============================================================ */
-
-const KPIS = [
-  { label: "Total Leads", value: "12,847", delta: 8.4, icon: Users },
-  { label: "New Leads Today", value: "142", delta: 12.1, icon: UserPlus },
-  { label: "Leads This Month", value: "3,412", delta: 5.2, icon: TrendingUp },
-  { label: "MQLs", value: "1,204", delta: 3.9, icon: Target },
-  { label: "SQLs", value: "487", delta: 14.6, icon: Zap },
-  { label: "Meetings Booked", value: "218", delta: 22.0, icon: CalendarCheck },
-  { label: "Opportunities", value: "96", delta: 6.1, icon: BarChart3 },
-  { label: "Deals Won", value: "34", delta: 18.4, icon: Trophy },
-  { label: "Deals Lost", value: "12", delta: -4.2, icon: TrendingDown },
-  { label: "Pipeline Value", value: "$1.42M", delta: 11.3, icon: DollarSign },
-  { label: "Revenue Generated", value: "$482K", delta: 9.8, icon: DollarSign },
-  { label: "Avg Lead Score", value: "62", delta: 2.1, icon: Activity },
-  { label: "Conversion Rate", value: "3.4%", delta: 0.6, icon: TrendingUp },
-  { label: "CAC", value: "$284", delta: -6.5, icon: DollarSign },
-  { label: "ROI", value: "412%", delta: 24.0, icon: TrendingUp },
-];
-
-const GROWTH = [
-  { m: "Jan", leads: 1420, mql: 380, sql: 120 },
-  { m: "Feb", leads: 1680, mql: 460, sql: 158 },
-  { m: "Mar", leads: 1890, mql: 512, sql: 182 },
-  { m: "Apr", leads: 2140, mql: 590, sql: 210 },
-  { m: "May", leads: 2380, mql: 665, sql: 244 },
-  { m: "Jun", leads: 2610, mql: 720, sql: 268 },
-  { m: "Jul", leads: 2880, mql: 812, sql: 302 },
-  { m: "Aug", leads: 3140, mql: 902, sql: 348 },
-  { m: "Sep", leads: 3412, mql: 1204, sql: 487 },
-];
-
-const SOURCES = [
-  { name: "Organic Search", value: 3210, color: "oklch(0.52 0.19 262)" },
-  { name: "Google Ads", value: 2140, color: "oklch(0.62 0.2 285)" },
-  { name: "LinkedIn", value: 1980, color: "oklch(0.68 0.18 275)" },
-  { name: "Chatbot", value: 1620, color: "oklch(0.72 0.14 200)" },
-  { name: "Referrals", value: 1140, color: "oklch(0.75 0.15 145)" },
-  { name: "Email Campaigns", value: 980, color: "oklch(0.78 0.14 90)" },
-  { name: "Webinars", value: 740, color: "oklch(0.72 0.18 30)" },
-  { name: "Facebook", value: 520, color: "oklch(0.65 0.2 350)" },
-  { name: "Direct", value: 517, color: "oklch(0.55 0.03 260)" },
-];
-
-const INDUSTRIES = [
-  { name: "SaaS", leads: 3120 },
-  { name: "Fintech", leads: 2210 },
-  { name: "E-commerce", leads: 1870 },
-  { name: "Healthcare", leads: 1540 },
-  { name: "Manufacturing", leads: 1180 },
-  { name: "Education", leads: 890 },
-  { name: "Retail", leads: 720 },
-];
-
-const FUNNEL = [
-  { stage: "Visitors", count: 148_320, pct: 100 },
-  { stage: "Leads", count: 12_847, pct: 8.7 },
-  { stage: "MQL", count: 1_204, pct: 9.4 },
-  { stage: "SQL", count: 487, pct: 40.4 },
-  { stage: "Meetings", count: 218, pct: 44.8 },
-  { stage: "Opportunities", count: 96, pct: 44.0 },
-  { stage: "Customers", count: 34, pct: 35.4 },
-];
-
-const EMAIL_STATS = {
-  sent: 84_210,
-  delivered: 82_910,
-  bounced: 1_300,
-  opened: 39_784,
-  clicked: 11_620,
-  replied: 2_140,
-  unsubscribed: 320,
-  spam: 42,
-};
-
-const EMAIL_TRENDS = [
-  { w: "W1", open: 41, click: 12 },
-  { w: "W2", open: 44, click: 13 },
-  { w: "W3", open: 47, click: 14 },
-  { w: "W4", open: 48, click: 15 },
-  { w: "W5", open: 46, click: 14 },
-  { w: "W6", open: 49, click: 16 },
-  { w: "W7", open: 51, click: 17 },
-  { w: "W8", open: 48, click: 15 },
-];
-
-const TOP_EMAILS = [
-  { subject: "Quick question about {{company}}'s pipeline", open: 62, click: 22, conv: 8.4 },
-  { subject: "3 SDRs at your stage tried this — worth 5 minutes?", open: 58, click: 19, conv: 7.1 },
-  { subject: "Saw your team is hiring — thought this might help", open: 54, click: 17, conv: 6.2 },
-  { subject: "Following up on the demo request", open: 51, click: 16, conv: 5.8 },
-  { subject: "Your Q4 pipeline forecast (custom for {{company}})", open: 49, click: 14, conv: 5.1 },
-];
-
-const REPS = [
-  { name: "Sarah Chen", assigned: 128, contacted: 118, meetings: 42, won: 11, revenue: 184_000, close: 26.2, respMin: 8 },
-  { name: "Marcus Reyes", assigned: 114, contacted: 106, meetings: 38, won: 9, revenue: 152_000, close: 23.7, respMin: 11 },
-  { name: "Priya Patel", assigned: 132, contacted: 122, meetings: 44, won: 8, revenue: 128_000, close: 18.2, respMin: 6 },
-  { name: "James Okoro", assigned: 98, contacted: 88, meetings: 28, won: 4, revenue: 84_000, close: 14.3, respMin: 14 },
-  { name: "Elena Petrova", assigned: 106, contacted: 92, meetings: 32, won: 2, revenue: 42_000, close: 6.3, respMin: 22 },
-];
-
-const CAMPAIGNS = [
-  { name: "LinkedIn ABM — Q3", leads: 1240, cost: 18_400, cpl: 14.8, mql: 41, sql: 18, meetings: 68, revenue: 142_000 },
-  { name: "Google Ads — Brand", leads: 2140, cost: 22_600, cpl: 10.6, mql: 32, sql: 12, meetings: 84, revenue: 118_000 },
-  { name: "Webinar — SDR Playbook", leads: 890, cost: 6_200, cpl: 7.0, mql: 48, sql: 22, meetings: 52, revenue: 96_000 },
-  { name: "Retargeting — Pricing Page", leads: 610, cost: 4_800, cpl: 7.9, mql: 38, sql: 16, meetings: 28, revenue: 62_000 },
-  { name: "Newsletter — Monthly", leads: 420, cost: 900, cpl: 2.1, mql: 22, sql: 6, meetings: 14, revenue: 24_000 },
-];
-
-const REVENUE_FORECAST = [
-  { m: "Apr", actual: 62, forecast: null },
-  { m: "May", actual: 71, forecast: null },
-  { m: "Jun", actual: 78, forecast: null },
-  { m: "Jul", actual: 84, forecast: null },
-  { m: "Aug", actual: 92, forecast: null },
-  { m: "Sep", actual: 95, forecast: 95 },
-  { m: "Oct", actual: null, forecast: 108 },
-  { m: "Nov", actual: null, forecast: 118 },
-  { m: "Dec", actual: null, forecast: 132 },
-];
-
-const SCORE_DISTRIBUTION = [
-  { bucket: "0-20", count: 2140 },
-  { bucket: "21-40", count: 3820 },
-  { bucket: "41-60", count: 3196 },
-  { bucket: "61-80", count: 2204 },
-  { bucket: "81-100", count: 1487 },
-];
-
-const REGIONS = [
-  { name: "North America", leads: 5820, revenue: 248_000 },
-  { name: "Europe", leads: 3910, revenue: 142_000 },
-  { name: "Asia Pacific", leads: 2140, revenue: 68_000 },
-  { name: "Latin America", leads: 640, revenue: 18_000 },
-  { name: "Middle East & Africa", leads: 337, revenue: 6_000 },
-];
-
-const ACTIVITY = [
-  { type: "won", text: "Deal won — Northwind ($42,000)", ago: "2m", tone: "success" },
-  { type: "sql", text: "Lead score reached 87 — Acme Corp", ago: "5m", tone: "primary" },
-  { type: "meeting", text: "Meeting booked with Globex", ago: "12m", tone: "primary" },
-  { type: "email", text: "Priya's cold email opened by 14 recipients", ago: "18m", tone: "muted" },
-  { type: "lead", text: "New lead from LinkedIn — Initech", ago: "24m", tone: "muted" },
-  { type: "click", text: "Pricing page link clicked — Vandelay", ago: "31m", tone: "muted" },
-  { type: "opp", text: "Opportunity created — $28K, Umbrella Co.", ago: "42m", tone: "primary" },
-  { type: "lost", text: "Deal lost — Wonka Industries (budget)", ago: "1h", tone: "destructive" },
-];
-
-const AI_INSIGHTS = [
-  {
-    title: "Reallocate budget toward LinkedIn",
-    body: "LinkedIn leads converted 42% better than Google Ads this month. Shifting 15% of paid spend could add ~$38K to Q4 pipeline.",
-    tone: "positive",
-  },
-  {
-    title: "Follow-up sequence #3 is underperforming",
-    body: "Open rate on the day-7 email dropped from 44% to 28% over the last 3 weeks. Consider rewriting the subject line.",
-    tone: "warning",
-  },
-  {
-    title: "SaaS leads convert 2.1× faster",
-    body: "Time-to-SQL for SaaS prospects is 6.4 days vs 13.7 days across other industries. Prioritize SaaS follow-ups on Sarah's queue.",
-    tone: "positive",
-  },
-  {
-    title: "Response time is hurting close rate",
-    body: "Reps averaging over 15min first-response have a 41% lower close rate. Elena's queue is at 22min — consider rebalancing.",
-    tone: "warning",
-  },
-];
 
 /* ============================================================
    PAGE
    ============================================================ */
 
 function DashboardPage() {
-  const [tab, setTab] = useState<
-    "overview" | "leads" | "funnel" | "email" | "chatbot" | "reps" | "campaigns" | "revenue" | "reports"
-  >("overview");
+  const [tab, setTab] = useState<TabId>("overview");
 
   return (
     <div className="flex min-h-screen bg-muted/40">
@@ -264,7 +90,6 @@ function DashboardPage() {
           {tab === "leads" && <LeadsTab />}
           {tab === "funnel" && <FunnelTab />}
           {tab === "email" && <EmailTab />}
-          {tab === "chatbot" && <ChatbotTab />}
           {tab === "reps" && <RepsTab />}
           {tab === "campaigns" && <CampaignsTab />}
           {tab === "revenue" && <RevenueTab />}
@@ -284,7 +109,7 @@ const NAV = [
   { id: "leads", label: "Lead generation", icon: Users },
   { id: "funnel", label: "Funnel", icon: Target },
   { id: "email", label: "Email", icon: Mail },
-  { id: "chatbot", label: "Chatbot", icon: Bot },
+  
   { id: "reps", label: "Sales reps", icon: Trophy },
   { id: "campaigns", label: "Campaigns", icon: BarChart3 },
   { id: "revenue", label: "Revenue", icon: DollarSign },

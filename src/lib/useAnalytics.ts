@@ -43,6 +43,8 @@ export type LeadRow = {
   estimated_value: number;
   country: string | null;
   company_size: string | null;
+  owner_id: string | null;
+  last_contacted_at: string | null;
 };
 
 export type ActivityRow = {
@@ -51,6 +53,22 @@ export type ActivityRow = {
   title: string;
   created_at: string;
 };
+
+type EmailRow = {
+  id: string;
+  lead_id: string;
+  subject: string;
+  status: string;
+  created_at: string;
+  opened_at: string | null;
+  replied_at: string | null;
+};
+
+type EventRow = { event_type: string; occurred_at: string; lead_id: string | null };
+type QueueRow = { status: string; campaign_id: string | null; created_at: string };
+type CampaignRow = { id: string; name: string; status: string; created_at: string };
+type EnrollmentRow = { campaign_id: string | null; lead_id: string; status: string };
+type ProfileRow = { id: string; full_name: string | null };
 
 function relativeTime(iso: string) {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
@@ -61,30 +79,60 @@ function relativeTime(iso: string) {
   return `${Math.round(h / 24)}d`;
 }
 
-function money(n: number) {
+export function money(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `$${Math.round(n / 1000)}K`;
   return `$${Math.round(n)}`;
 }
 
+const pctStr = (n: number, base: number) => (base ? `${((n / base) * 100).toFixed(1)}%` : "0%");
+
 async function fetchAnalytics() {
-  const [leadsRes, actRes] = await Promise.all([
-    supabase
-      .from("leads")
-      .select("id, created_at, status, source, score, estimated_value, country, company_size")
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    supabase
-      .from("lead_activities")
-      .select("id, type, title, created_at")
-      .order("created_at", { ascending: false })
-      .limit(20),
-  ]);
+  const [leadsRes, actRes, emailRes, eventRes, queueRes, campaignRes, enrollRes, profileRes] =
+    await Promise.all([
+      supabase
+        .from("leads")
+        .select(
+          "id, created_at, status, source, score, estimated_value, country, company_size, owner_id, last_contacted_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      supabase
+        .from("lead_activities")
+        .select("id, type, title, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("lead_emails")
+        .select("id, lead_id, subject, status, created_at, opened_at, replied_at")
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      supabase
+        .from("email_events")
+        .select("event_type, occurred_at, lead_id")
+        .order("occurred_at", { ascending: false })
+        .limit(5000),
+      supabase
+        .from("email_queue")
+        .select("status, campaign_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      supabase.from("campaigns").select("id, name, status, created_at").limit(200),
+      supabase.from("sequence_enrollments").select("campaign_id, lead_id, status").limit(5000),
+      supabase.from("profiles").select("id, full_name").limit(200),
+    ]);
+
   if (leadsRes.error) throw leadsRes.error;
-  if (actRes.error) throw actRes.error;
+
   return {
     leads: (leadsRes.data ?? []) as LeadRow[],
     activities: (actRes.data ?? []) as ActivityRow[],
+    emails: (emailRes.data ?? []) as EmailRow[],
+    events: (eventRes.data ?? []) as EventRow[],
+    queue: (queueRes.data ?? []) as QueueRow[],
+    campaigns: (campaignRes.data ?? []) as CampaignRow[],
+    enrollments: (enrollRes.data ?? []) as EnrollmentRow[],
+    profiles: (profileRes.data ?? []) as ProfileRow[],
   };
 }
 
@@ -97,6 +145,12 @@ export function useAnalytics() {
 
   const leads = data?.leads ?? [];
   const activities = data?.activities ?? [];
+  const emails = data?.emails ?? [];
+  const events = data?.events ?? [];
+  const queue = data?.queue ?? [];
+  const campaignRows = data?.campaigns ?? [];
+  const enrollments = data?.enrollments ?? [];
+  const profiles = data?.profiles ?? [];
 
   const count = (fn: (l: LeadRow) => boolean) => leads.filter(fn).length;
   const now = new Date();
@@ -110,7 +164,9 @@ export function useAnalytics() {
   const sql = count((l) => l.status === "sql");
   const meetings = count((l) => l.status === "meeting");
   const qualified = count((l) => l.status === "qualified");
-  const revenue = leads.filter((l) => l.status === "won").reduce((s, l) => s + Number(l.estimated_value), 0);
+  const revenue = leads
+    .filter((l) => l.status === "won")
+    .reduce((s, l) => s + Number(l.estimated_value), 0);
   const pipeline = leads
     .filter((l) => l.status !== "won" && l.status !== "lost")
     .reduce((s, l) => s + Number(l.estimated_value), 0);
@@ -141,35 +197,36 @@ export function useAnalytics() {
     { label: "Avg Lead Score", value: String(avgScore), delta: 0, icon: Activity },
     {
       label: "Conversion Rate",
-      value: total ? `${((won / total) * 100).toFixed(1)}%` : "0%",
+      value: pctStr(won, total),
       delta: 0,
       icon: TrendingUp,
     },
-    {
-      label: "Avg Deal Size",
-      value: won ? money(revenue / won) : "$0",
-      delta: 0,
-      icon: DollarSign,
-    },
+    { label: "Avg Deal Size", value: won ? money(revenue / won) : "$0", delta: 0, icon: DollarSign },
     {
       label: "MQL Rate",
-      value: total ? `${(((mql + sql + meetings + won) / total) * 100).toFixed(1)}%` : "0%",
+      value: pctStr(mql + sql + meetings + won, total),
       delta: 0,
       icon: Target,
     },
   ];
 
   // Last 9 months of lead / MQL+ / SQL+ counts
-  const GROWTH = Array.from({ length: 9 }, (_, idx) => {
+  const monthKeys = Array.from({ length: 9 }, (_, idx) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (8 - idx), 1);
-    const start = d.getTime();
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+    return {
+      label: d.toLocaleString("en", { month: "short" }),
+      start: d.getTime(),
+      end: new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(),
+    };
+  });
+
+  const GROWTH = monthKeys.map((mk) => {
     const inMonth = leads.filter((l) => {
       const t = new Date(l.created_at).getTime();
-      return t >= start && t < end;
+      return t >= mk.start && t < mk.end;
     });
     return {
-      m: d.toLocaleString("en", { month: "short" }),
+      m: mk.label,
       leads: inMonth.length,
       mql: inMonth.filter((l) => ["mql", "sql", "meeting", "won"].includes(l.status)).length,
       sql: inMonth.filter((l) => ["sql", "meeting", "won"].includes(l.status)).length,
@@ -187,7 +244,8 @@ export function useAnalytics() {
     }));
 
   const sizeMap = new Map<string, number>();
-  for (const l of leads) sizeMap.set(l.company_size ?? "Unknown", (sizeMap.get(l.company_size ?? "Unknown") ?? 0) + 1);
+  for (const l of leads)
+    sizeMap.set(l.company_size ?? "Unknown", (sizeMap.get(l.company_size ?? "Unknown") ?? 0) + 1);
   const SEGMENTS = [...sizeMap.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([name, leadsCount]) => ({ name, leads: leadsCount }));
@@ -236,8 +294,228 @@ export function useAnalytics() {
     text: a.title,
     ago: relativeTime(a.created_at),
     tone:
-      a.type === "status_change" ? "primary" : a.type === "note" ? "muted" : ("muted" as string),
+      a.type === "status_change"
+        ? "primary"
+        : a.type === "email_sent" || a.type === "email_replied"
+          ? "success"
+          : ("muted" as string),
   }));
+
+  /* ---------------- Email performance (real sends + provider events) ------- */
+
+  const eventCount = (t: string) => events.filter((e) => e.event_type === t).length;
+  const sent = emails.length;
+  const delivered = Math.max(eventCount("delivered"), 0) || sent;
+  const openedFromEvents = eventCount("opened");
+  const opened = openedFromEvents || emails.filter((e) => e.opened_at).length;
+  const clicked = eventCount("clicked");
+  const repliedFromEvents = eventCount("replied");
+  const replied = repliedFromEvents || emails.filter((e) => e.replied_at).length;
+  const bounced = eventCount("bounced");
+  const complained = eventCount("complained");
+  const unsubscribed = eventCount("unsubscribed");
+
+  const EMAIL_STATS = [
+    { label: "Emails sent", value: sent.toLocaleString() },
+    { label: "Delivery rate", value: pctStr(delivered, sent) },
+    { label: "Bounce rate", value: pctStr(bounced, sent) },
+    { label: "Open rate", value: pctStr(opened, delivered) },
+    { label: "Click rate", value: pctStr(clicked, delivered) },
+    { label: "Reply rate", value: pctStr(replied, delivered) },
+    { label: "Unsubscribes", value: unsubscribed.toLocaleString() },
+    { label: "Spam complaints", value: complained.toLocaleString() },
+  ];
+
+  const EMAIL_QUEUE = [
+    { label: "Queued", value: queue.filter((q) => q.status === "queued").length },
+    { label: "Processing", value: queue.filter((q) => q.status === "processing").length },
+    { label: "Sent", value: queue.filter((q) => q.status === "sent").length },
+    { label: "Failed", value: queue.filter((q) => q.status === "failed").length },
+    { label: "Suppressed", value: queue.filter((q) => q.status === "suppressed").length },
+  ];
+
+  // Weekly open / click rate for the last 8 weeks
+  const EMAIL_TRENDS = Array.from({ length: 8 }, (_, i) => {
+    const end = now.getTime() - (7 - i) * 7 * 86_400_000;
+    const start = end - 7 * 86_400_000;
+    const inWeek = (iso: string) => {
+      const t = new Date(iso).getTime();
+      return t >= start && t < end;
+    };
+    const weekSent = emails.filter((e) => inWeek(e.created_at)).length;
+    const weekOpened = events.filter((e) => e.event_type === "opened" && inWeek(e.occurred_at)).length;
+    const weekClicked = events.filter(
+      (e) => e.event_type === "clicked" && inWeek(e.occurred_at),
+    ).length;
+    return {
+      w: new Date(start).toLocaleDateString("en", { month: "short", day: "numeric" }),
+      open: weekSent ? Math.round((weekOpened / weekSent) * 100) : 0,
+      click: weekSent ? Math.round((weekClicked / weekSent) * 100) : 0,
+    };
+  });
+
+  // Subject-line performance from real sends
+  const subjectMap = new Map<string, { sent: number; opened: number; replied: number }>();
+  for (const e of emails) {
+    const key = e.subject || "(no subject)";
+    const row = subjectMap.get(key) ?? { sent: 0, opened: 0, replied: 0 };
+    row.sent += 1;
+    if (e.opened_at) row.opened += 1;
+    if (e.replied_at) row.replied += 1;
+    subjectMap.set(key, row);
+  }
+  const TOP_EMAILS = [...subjectMap.entries()]
+    .map(([subject, v]) => ({
+      subject,
+      sent: v.sent,
+      open: v.sent ? Math.round((v.opened / v.sent) * 100) : 0,
+      reply: v.sent ? Math.round((v.replied / v.sent) * 100) : 0,
+    }))
+    .sort((a, b) => b.open - a.open || b.sent - a.sent)
+    .slice(0, 10);
+
+  /* ---------------- Rep performance (real owners) -------------------------- */
+
+  const nameById = new Map(profiles.map((p) => [p.id, p.full_name ?? "Teammate"]));
+  const repMap = new Map<
+    string,
+    { assigned: number; contacted: number; meetings: number; won: number; revenue: number }
+  >();
+  for (const l of leads) {
+    const key = l.owner_id ?? "unassigned";
+    const r = repMap.get(key) ?? { assigned: 0, contacted: 0, meetings: 0, won: 0, revenue: 0 };
+    r.assigned += 1;
+    if (l.last_contacted_at || l.status !== "new") r.contacted += 1;
+    if (["meeting", "won"].includes(l.status)) r.meetings += 1;
+    if (l.status === "won") {
+      r.won += 1;
+      r.revenue += Number(l.estimated_value);
+    }
+    repMap.set(key, r);
+  }
+  const REPS = [...repMap.entries()]
+    .map(([id, r]) => ({
+      name: id === "unassigned" ? "Unassigned" : (nameById.get(id) ?? "Teammate"),
+      ...r,
+      close: r.assigned ? Number(((r.won / r.assigned) * 100).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => b.revenue - a.revenue || b.assigned - a.assigned);
+
+  /* ---------------- Campaign performance ----------------------------------- */
+
+  const leadById = new Map(leads.map((l) => [l.id, l]));
+  const CAMPAIGNS = campaignRows
+    .map((c) => {
+      const rows = enrollments.filter((e) => e.campaign_id === c.id);
+      const campaignLeads = rows
+        .map((r) => leadById.get(r.lead_id))
+        .filter((l): l is LeadRow => Boolean(l));
+      const wonLeads = campaignLeads.filter((l) => l.status === "won");
+      return {
+        name: c.name,
+        status: c.status,
+        enrolled: rows.length,
+        active: rows.filter((r) => r.status === "active").length,
+        emails: queue.filter((q) => q.campaign_id === c.id && q.status === "sent").length,
+        mql: campaignLeads.filter((l) => ["mql", "sql", "meeting", "won"].includes(l.status)).length,
+        meetings: campaignLeads.filter((l) => ["meeting", "won"].includes(l.status)).length,
+        won: wonLeads.length,
+        revenue: wonLeads.reduce((s, l) => s + Number(l.estimated_value), 0),
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue || b.enrolled - a.enrolled);
+
+  /* ---------------- Revenue actuals + trend forecast ----------------------- */
+
+  const actualByMonth = monthKeys.map((mk) => ({
+    m: mk.label,
+    actual: leads
+      .filter((l) => {
+        if (l.status !== "won") return false;
+        const t = new Date(l.created_at).getTime();
+        return t >= mk.start && t < mk.end;
+      })
+      .reduce((s, l) => s + Number(l.estimated_value), 0),
+  }));
+
+  const recent = actualByMonth.slice(-6).map((r) => r.actual);
+  const avgRecent = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
+  const firstHalf = recent.slice(0, 3).reduce((a, b) => a + b, 0) / Math.max(1, recent.slice(0, 3).length);
+  const secondHalf = recent.slice(3).reduce((a, b) => a + b, 0) / Math.max(1, recent.slice(3).length);
+  const monthlyDrift = secondHalf - firstHalf;
+
+  const REVENUE_SERIES: { m: string; actual: number | null; forecast: number | null }[] = [
+    ...actualByMonth.map((r, i) => ({
+      m: r.m,
+      actual: r.actual,
+      forecast: i === actualByMonth.length - 1 ? r.actual : null,
+    })),
+    ...Array.from({ length: 3 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() + i + 1, 1);
+      return {
+        m: d.toLocaleString("en", { month: "short" }),
+        actual: null,
+        forecast: Math.max(0, Math.round(avgRecent + monthlyDrift * (i + 1))),
+      };
+    }),
+  ];
+
+  const forecastNext3 = REVENUE_SERIES.slice(-3).reduce((s, r) => s + (r.forecast ?? 0), 0);
+  const thisMonthRevenue = actualByMonth[actualByMonth.length - 1]?.actual ?? 0;
+
+  const REVENUE_KPIS = [
+    { label: "Revenue this month", value: money(thisMonthRevenue) },
+    { label: "Revenue (all time)", value: money(revenue) },
+    { label: "Open pipeline", value: money(pipeline) },
+    { label: "Forecast next 3 months", value: money(forecastNext3) },
+  ];
+
+  /* ---------------- Data-derived insights ---------------------------------- */
+
+  const INSIGHTS: { title: string; body: string; tone: "positive" | "warning" }[] = [];
+  if (total) {
+    const bySource = new Map<string, { total: number; qualified: number }>();
+    for (const l of leads) {
+      const row = bySource.get(l.source) ?? { total: 0, qualified: 0 };
+      row.total += 1;
+      if (["mql", "sql", "meeting", "won"].includes(l.status)) row.qualified += 1;
+      bySource.set(l.source, row);
+    }
+    const ranked = [...bySource.entries()]
+      .filter(([, v]) => v.total >= 3)
+      .sort((a, b) => b[1].qualified / b[1].total - a[1].qualified / a[1].total);
+    const best = ranked[0];
+    if (best) {
+      INSIGHTS.push({
+        title: `${SOURCE_LABELS[best[0]] ?? best[0]} is your strongest source`,
+        body: `${Math.round((best[1].qualified / best[1].total) * 100)}% of its ${best[1].total} leads reach MQL or better. Prioritise more volume here.`,
+        tone: "positive",
+      });
+    }
+    const untouched = leads.filter((l) => l.status === "new" && !l.last_contacted_at).length;
+    if (untouched > 0) {
+      INSIGHTS.push({
+        title: `${untouched} lead${untouched === 1 ? "" : "s"} haven't been contacted`,
+        body: "Leads left untouched cool off fast. Enrol them in a sequence or send a first email today.",
+        tone: "warning",
+      });
+    }
+    if (sent > 0) {
+      INSIGHTS.push({
+        title: `Reply rate is ${pctStr(replied, sent)}`,
+        body: `${replied} repl${replied === 1 ? "y" : "ies"} from ${sent} sent email${sent === 1 ? "" : "s"}. Test shorter subject lines if this stays under 5%.`,
+        tone: replied / Math.max(1, sent) >= 0.05 ? "positive" : "warning",
+      });
+    }
+    const hot = leads.filter((l) => l.score >= 80 && !["won", "lost"].includes(l.status)).length;
+    if (hot > 0) {
+      INSIGHTS.push({
+        title: `${hot} high-scoring lead${hot === 1 ? "" : "s"} still open`,
+        body: "These scored 80+ and are not closed yet — they are the fastest route to revenue this month.",
+        tone: "positive",
+      });
+    }
+  }
 
   return {
     isLoading,
@@ -252,5 +530,15 @@ export function useAnalytics() {
     SCORE_DISTRIBUTION,
     REGIONS,
     ACTIVITY,
+    EMAIL_STATS,
+    EMAIL_QUEUE,
+    EMAIL_TRENDS,
+    TOP_EMAILS,
+    hasEmails: sent > 0,
+    REPS,
+    CAMPAIGNS,
+    REVENUE_SERIES,
+    REVENUE_KPIS,
+    INSIGHTS,
   };
 }
