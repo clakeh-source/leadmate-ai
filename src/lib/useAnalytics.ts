@@ -518,12 +518,164 @@ export function useAnalytics() {
     }
   }
 
+  /* ---------------- Executive (C-level) view -------------------------------- */
+
+  const STAGE_LABELS: Record<string, string> = {
+    new: "New",
+    contacted: "Contacted",
+    qualified: "Qualified",
+    mql: "MQL",
+    sql: "SQL",
+    meeting: "Meeting",
+  };
+  const PIPELINE_BY_STAGE = Object.entries(STAGE_LABELS).map(([key, label], i) => {
+    const rows = leads.filter((l) => l.status === key);
+    return {
+      stage: label,
+      count: rows.length,
+      value: rows.reduce((s, l) => s + Number(l.estimated_value), 0),
+      color: PALETTE[i % PALETTE.length]!,
+    };
+  });
+
+  const closedLeads = leads.filter((l) => l.status === "won" || l.status === "lost");
+  const daysBetween = (a: string, b: string) =>
+    Math.max(0, (new Date(b).getTime() - new Date(a).getTime()) / 86_400_000);
+  const avgCycleDays = closedLeads.length
+    ? closedLeads.reduce((s, l) => s + daysBetween(l.created_at, l.updated_at), 0) /
+      closedLeads.length
+    : 0;
+  const winRate = closedLeads.length ? won / closedLeads.length : 0;
+  const openDeals = leads.filter((l) => !["won", "lost"].includes(l.status));
+  const stale = openDeals.filter(
+    (l) => Date.now() - new Date(l.updated_at).getTime() > 14 * 86_400_000,
+  ).length;
+  const untouchedLeads = leads.filter((l) => l.status === "new" && !l.last_contacted_at).length;
+  const weightedPipeline = Math.round(pipeline * (winRate || 0.15));
+
+  const EXEC_KPIS = [
+    { label: "Revenue (all time)", value: money(revenue), sub: `${won} closed-won deals` },
+    { label: "Open pipeline", value: money(pipeline), sub: `${openDeals.length} active deals` },
+    {
+      label: "Weighted pipeline",
+      value: money(weightedPipeline),
+      sub: `at ${(winRate * 100).toFixed(0)}% historic win rate`,
+    },
+    {
+      label: "Avg sales cycle",
+      value: avgCycleDays ? `${avgCycleDays.toFixed(1)} days` : "—",
+      sub: `${closedLeads.length} closed deals measured`,
+    },
+    { label: "Win rate", value: pctStr(won, closedLeads.length || 0), sub: `${lost} lost` },
+    { label: "Avg deal size", value: won ? money(revenue / won) : "$0", sub: "closed-won average" },
+    { label: "Avg lead score", value: String(avgScore), sub: `${total} leads scored` },
+    {
+      label: "Needs attention",
+      value: String(stale + untouchedLeads),
+      sub: `${untouchedLeads} never contacted · ${stale} stale 14d+`,
+    },
+  ];
+
+  const PIPELINE_HEALTH = [
+    {
+      label: "Coverage vs revenue",
+      value: revenue ? `${(pipeline / revenue).toFixed(1)}x` : "—",
+      tone: pipeline >= revenue * 3 ? "good" : "warn",
+      hint: "Healthy teams keep 3x or more open pipeline against closed revenue.",
+    },
+    {
+      label: "Untouched leads",
+      value: String(untouchedLeads),
+      tone: untouchedLeads === 0 ? "good" : "warn",
+      hint: "New leads with no outreach logged yet.",
+    },
+    {
+      label: "Stale deals (14d+)",
+      value: String(stale),
+      tone: stale === 0 ? "good" : "warn",
+      hint: "Open deals with no change in the last two weeks.",
+    },
+    {
+      label: "Hot open leads (80+)",
+      value: String(openDeals.filter((l) => l.score >= 80).length),
+      tone: "good",
+      hint: "Highest-scoring deals still in play.",
+    },
+  ];
+
+  const SCORE_TRENDS = monthKeys.map((mk) => {
+    const inMonth = leads.filter((l) => {
+      const t = new Date(l.created_at).getTime();
+      return t >= mk.start && t < mk.end;
+    });
+    const avg = inMonth.length
+      ? Math.round(inMonth.reduce((s, l) => s + l.score, 0) / inMonth.length)
+      : 0;
+    return {
+      m: mk.label,
+      avgScore: avg,
+      hot: inMonth.filter((l) => l.score >= 80).length,
+      cold: inMonth.filter((l) => l.score < 40).length,
+    };
+  });
+
+  const JOURNEY = [
+    { step: "Lead captured", value: String(total) },
+    { step: "First outreach", value: String(leads.filter((l) => l.last_contacted_at).length) },
+    { step: "Engaged (open/click/reply)", value: String(opened + clicked + replied) },
+    { step: "Qualified (MQL+)", value: String(mql + sql + meetings + won) },
+    { step: "Meeting booked", value: String(meetings + won) },
+    { step: "Closed won", value: String(won) },
+  ];
+
+  const FUNNEL_STATS = (() => {
+    const drops = FUNNEL.slice(1).sort((a, b) => a.pct - b.pct);
+    const worst = drops[0];
+    return [
+      { label: "Overall conversion", value: pctStr(won, total), hint: "Leads → customers" },
+      {
+        label: "Sales cycle",
+        value: avgCycleDays ? `${avgCycleDays.toFixed(1)} days` : "—",
+        hint: "Average create → close",
+      },
+      {
+        label: "Biggest bottleneck",
+        value: worst ? worst.stage : "—",
+        hint: worst ? `Only ${worst.pct.toFixed(1)}% get through this step` : "Not enough data yet",
+      },
+    ];
+  })();
+
+  const CSV_ROWS = () => {
+    const header = [
+      "metric",
+      "value",
+    ];
+    const rows: string[][] = [
+      ...KPIS.map((k) => [k.label, String(k.value)]),
+      ...EXEC_KPIS.map((k) => [k.label, String(k.value)]),
+      ...EMAIL_STATS.map((s) => [s.label, String(s.value)]),
+      ...REPS.map((r) => [`Rep: ${r.name} revenue`, String(r.revenue)]),
+      ...CAMPAIGNS.map((c) => [`Campaign: ${c.name} revenue`, String(c.revenue)]),
+    ];
+    return [header, ...rows]
+      .map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+  };
+
   return {
     isLoading,
     error,
     hasData: total > 0,
     leads,
     KPIS,
+    EXEC_KPIS,
+    PIPELINE_BY_STAGE,
+    PIPELINE_HEALTH,
+    SCORE_TRENDS,
+    JOURNEY,
+    FUNNEL_STATS,
+    CSV_ROWS,
     GROWTH,
     SOURCES,
     SEGMENTS,
