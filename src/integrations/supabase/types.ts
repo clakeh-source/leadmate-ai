@@ -591,6 +591,65 @@ export type Database = {
         }
         Relationships: []
       }
+      scoring_rules: {
+        Row: {
+          confidence_weight: number
+          created_at: string
+          engagement_weight: number
+          icp_weight: number
+          intent_keywords: string[]
+          intent_weight: number
+          mql_threshold: number
+          sql_threshold: number
+          target_countries: string[]
+          target_industries: string[]
+          target_sizes: string[]
+          target_titles: string[]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          confidence_weight?: number
+          created_at?: string
+          engagement_weight?: number
+          icp_weight?: number
+          intent_keywords?: string[]
+          intent_weight?: number
+          mql_threshold?: number
+          sql_threshold?: number
+          target_countries?: string[]
+          target_industries?: string[]
+          target_sizes?: string[]
+          target_titles?: string[]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          confidence_weight?: number
+          created_at?: string
+          engagement_weight?: number
+          icp_weight?: number
+          intent_keywords?: string[]
+          intent_weight?: number
+          mql_threshold?: number
+          sql_threshold?: number
+          target_countries?: string[]
+          target_industries?: string[]
+          target_sizes?: string[]
+          target_titles?: string[]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scoring_rules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sequence_enrollments: {
         Row: {
           campaign_id: string | null
@@ -978,6 +1037,10 @@ export type Database = {
         Returns: boolean
       }
       is_workspace_member: { Args: { _workspace_id: string }; Returns: boolean }
+      recompute_workspace_scores: {
+        Args: { _workspace_id: string }
+        Returns: number
+      }
       workspace_emails_sent_today: {
         Args: { _workspace_id: string }
         Returns: number
