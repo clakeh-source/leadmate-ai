@@ -102,7 +102,7 @@ async function fetchAnalytics() {
         .from("lead_activities")
         .select("id, type, title, created_at")
         .order("created_at", { ascending: false })
-        .limit(20),
+        .limit(40),
       supabase
         .from("lead_emails")
         .select("id, lead_id, subject, status, created_at, opened_at, replied_at")
