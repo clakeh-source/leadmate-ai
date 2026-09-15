@@ -714,22 +714,11 @@ function FunnelTab() {
    ============================================================ */
 
 function EmailTab() {
-  const s = EMAIL_STATS;
-  const pct = (n: number, base: number) => ((n / base) * 100).toFixed(1);
-  const stats = [
-    { label: "Emails sent", value: s.sent.toLocaleString() },
-    { label: "Delivery rate", value: `${pct(s.delivered, s.sent)}%` },
-    { label: "Bounce rate", value: `${pct(s.bounced, s.sent)}%` },
-    { label: "Open rate", value: `${pct(s.opened, s.delivered)}%` },
-    { label: "Click rate", value: `${pct(s.clicked, s.delivered)}%` },
-    { label: "Reply rate", value: `${pct(s.replied, s.delivered)}%` },
-    { label: "Unsubscribes", value: s.unsubscribed.toLocaleString() },
-    { label: "Spam complaints", value: s.spam.toString() },
-  ];
+  const { EMAIL_STATS, EMAIL_QUEUE, EMAIL_TRENDS, TOP_EMAILS, hasEmails } = useAnalytics();
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
+        {EMAIL_STATS.map((s) => (
           <Card key={s.label}>
             <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
             <p className="mt-2 font-display text-2xl font-bold">{s.value}</p>
@@ -738,116 +727,79 @@ function EmailTab() {
       </section>
 
       <Card>
-        <CardHeader title="Engagement trends" subtitle="Open and click rate week-by-week" />
-        <div className="h-72">
-          <ResponsiveContainer>
-            <LineChart data={EMAIL_TRENDS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="w" tick={chartAxis} axisLine={false} tickLine={false} />
-              <YAxis tick={chartAxis} axisLine={false} tickLine={false} unit="%" />
-              <ChartTooltip />
-              <Line type="monotone" dataKey="open" stroke="oklch(0.52 0.19 262)" strokeWidth={2} name="Open rate" />
-              <Line type="monotone" dataKey="click" stroke="oklch(0.68 0.18 275)" strokeWidth={2} name="Click rate" />
-            </LineChart>
-          </ResponsiveContainer>
+        <CardHeader title="Sending queue" subtitle="Live state of your outbound queue" />
+        <div className="grid gap-3 sm:grid-cols-5">
+          {EMAIL_QUEUE.map((q) => (
+            <div key={q.label} className="rounded-xl border border-border bg-background p-4">
+              <p className="text-xs text-muted-foreground">{q.label}</p>
+              <p className="mt-1 font-display text-xl font-bold tabular-nums">{q.value}</p>
+            </div>
+          ))}
         </div>
       </Card>
 
-      <Card>
-        <CardHeader title="Top performing emails" subtitle="By open, click, and conversion" />
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="py-3 pr-4">Subject</th>
-                <th className="py-3 pr-4 text-right">Open %</th>
-                <th className="py-3 pr-4 text-right">Click %</th>
-                <th className="py-3 text-right">Conv %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {TOP_EMAILS.map((e) => (
-                <tr key={e.subject} className="border-b border-border/60">
-                  <td className="py-3 pr-4 font-medium">{e.subject}</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">{e.open}%</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">{e.click}%</td>
-                  <td className="py-3 text-right tabular-nums font-semibold text-emerald-600">
-                    {e.conv}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </>
-  );
-}
-
-/* ============================================================
-   CHATBOT
-   ============================================================ */
-
-function ChatbotTab() {
-  const chatFunnel = [
-    { stage: "Chat sessions", count: 8_420 },
-    { stage: "Conversations started", count: 5_610 },
-    { stage: "Leads captured", count: 2_140 },
-    { stage: "Qualified leads", count: 892 },
-    { stage: "Meetings booked", count: 214 },
-  ];
-  const max = chatFunnel[0].count;
-  const kpis = [
-    { label: "Chat sessions", value: "8,420" },
-    { label: "Unique visitors", value: "6,180" },
-    { label: "Conversations", value: "5,610" },
-    { label: "Leads captured", value: "2,140" },
-    { label: "Qualified", value: "892" },
-    { label: "Handoffs", value: "148" },
-    { label: "Avg duration", value: "4m 12s" },
-    { label: "Completion rate", value: "68%" },
-  ];
-  return (
-    <>
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => (
-          <Card key={k.label}>
-            <p className="text-xs font-medium text-muted-foreground">{k.label}</p>
-            <p className="mt-2 font-display text-2xl font-bold">{k.value}</p>
+      {!hasEmails ? (
+        <Card>
+          <div className="py-12 text-center">
+            <p className="text-sm font-semibold">No emails sent yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Send or queue your first outreach from a lead to see delivery, open and reply rates here.
+            </p>
+            <Link
+              to="/leads"
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              Go to Leads <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader title="Engagement trends" subtitle="Open and click rate week-by-week" />
+            <div className="h-72">
+              <ResponsiveContainer>
+                <LineChart data={EMAIL_TRENDS}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="w" tick={chartAxis} axisLine={false} tickLine={false} />
+                  <YAxis tick={chartAxis} axisLine={false} tickLine={false} unit="%" />
+                  <ChartTooltip />
+                  <Line type="monotone" dataKey="open" stroke="oklch(0.52 0.19 262)" strokeWidth={2} name="Open rate" />
+                  <Line type="monotone" dataKey="click" stroke="oklch(0.68 0.18 275)" strokeWidth={2} name="Click rate" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
-        ))}
-      </section>
 
-      <Card>
-        <CardHeader title="Chatbot conversion funnel" subtitle="From first visit to booked meeting" />
-        <div className="space-y-3">
-          {chatFunnel.map((f, i) => {
-            const width = (f.count / max) * 100;
-            const conv = i > 0 ? ((f.count / chatFunnel[i - 1].count) * 100).toFixed(1) : null;
-            return (
-              <div key={f.stage}>
-                <div className="mb-1.5 flex items-center justify-between text-sm">
-                  <span className="font-medium">{f.stage}</span>
-                  <span className="text-muted-foreground">
-                    {f.count.toLocaleString()}
-                    {conv && (
-                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                        {conv}%
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="h-8 overflow-hidden rounded-lg bg-muted">
-                  <div
-                    className="h-full rounded-lg bg-gradient-hero"
-                    style={{ width: `${Math.max(width, 4)}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+          <Card>
+            <CardHeader title="Subject line performance" subtitle="Your real sends, ranked by open rate" />
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="py-3 pr-4">Subject</th>
+                    <th className="py-3 pr-4 text-right">Sent</th>
+                    <th className="py-3 pr-4 text-right">Open %</th>
+                    <th className="py-3 text-right">Reply %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {TOP_EMAILS.map((e) => (
+                    <tr key={e.subject} className="border-b border-border/60">
+                      <td className="py-3 pr-4 font-medium">{e.subject}</td>
+                      <td className="py-3 pr-4 text-right tabular-nums">{e.sent}</td>
+                      <td className="py-3 pr-4 text-right tabular-nums">{e.open}%</td>
+                      <td className="py-3 text-right font-semibold tabular-nums text-emerald-600">
+                        {e.reply}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
     </>
   );
 }
@@ -857,10 +809,11 @@ function ChatbotTab() {
    ============================================================ */
 
 function RepsTab() {
-  const sorted = useMemo(() => [...REPS].sort((a, b) => b.revenue - a.revenue), []);
+  const { REPS, hasData } = useAnalytics();
+  if (!hasData) return <EmptyState />;
   return (
     <Card>
-      <CardHeader title="Rep leaderboard" subtitle="Ranked by revenue generated" />
+      <CardHeader title="Rep leaderboard" subtitle="Ranked by closed-won revenue" />
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -872,12 +825,11 @@ function RepsTab() {
               <th className="py-3 pr-4 text-right">Meetings</th>
               <th className="py-3 pr-4 text-right">Won</th>
               <th className="py-3 pr-4 text-right">Close %</th>
-              <th className="py-3 pr-4 text-right">Response</th>
               <th className="py-3 text-right">Revenue</th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r, i) => (
+            {REPS.map((r, i) => (
               <tr key={r.name} className="border-b border-border/60">
                 <td className="py-3 pr-4">
                   <div
@@ -894,7 +846,11 @@ function RepsTab() {
                 <td className="py-3 pr-4">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {r.name.split(" ").map((n) => n[0]).join("")}
+                      {r.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)}
                     </div>
                     <span className="font-medium">{r.name}</span>
                   </div>
@@ -904,10 +860,7 @@ function RepsTab() {
                 <td className="py-3 pr-4 text-right tabular-nums">{r.meetings}</td>
                 <td className="py-3 pr-4 text-right tabular-nums">{r.won}</td>
                 <td className="py-3 pr-4 text-right tabular-nums">{r.close}%</td>
-                <td className="py-3 pr-4 text-right tabular-nums">{r.respMin}m</td>
-                <td className="py-3 text-right font-semibold tabular-nums">
-                  ${(r.revenue / 1000).toFixed(0)}K
-                </td>
+                <td className="py-3 text-right font-semibold tabular-nums">{money(r.revenue)}</td>
               </tr>
             ))}
           </tbody>
@@ -922,48 +875,60 @@ function RepsTab() {
    ============================================================ */
 
 function CampaignsTab() {
+  const { CAMPAIGNS } = useAnalytics();
+  if (!CAMPAIGNS.length)
+    return (
+      <Card>
+        <div className="py-12 text-center">
+          <p className="text-sm font-semibold">No campaigns yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create a campaign and enrol leads in a sequence to track its results here.
+          </p>
+          <Link
+            to="/campaigns"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            Go to Campaigns <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </Card>
+    );
   return (
     <Card>
-      <CardHeader
-        title="Campaign performance"
-        subtitle="Compare CPL, conversion, and ROI across campaigns"
-      />
+      <CardHeader title="Campaign performance" subtitle="Enrolment, sends and revenue per campaign" />
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
               <th className="py-3 pr-4">Campaign</th>
-              <th className="py-3 pr-4 text-right">Leads</th>
-              <th className="py-3 pr-4 text-right">Cost</th>
-              <th className="py-3 pr-4 text-right">CPL</th>
-              <th className="py-3 pr-4 text-right">MQL %</th>
-              <th className="py-3 pr-4 text-right">SQL %</th>
+              <th className="py-3 pr-4">Status</th>
+              <th className="py-3 pr-4 text-right">Enrolled</th>
+              <th className="py-3 pr-4 text-right">Active</th>
+              <th className="py-3 pr-4 text-right">Emails sent</th>
+              <th className="py-3 pr-4 text-right">MQL+</th>
               <th className="py-3 pr-4 text-right">Meetings</th>
-              <th className="py-3 pr-4 text-right">Revenue</th>
-              <th className="py-3 text-right">ROI</th>
+              <th className="py-3 pr-4 text-right">Won</th>
+              <th className="py-3 text-right">Revenue</th>
             </tr>
           </thead>
           <tbody>
-            {CAMPAIGNS.map((c) => {
-              const roi = ((c.revenue - c.cost) / c.cost) * 100;
-              return (
-                <tr key={c.name} className="border-b border-border/60">
-                  <td className="py-3 pr-4 font-medium">{c.name}</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">{c.leads.toLocaleString()}</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">${c.cost.toLocaleString()}</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">${c.cpl}</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">{c.mql}%</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">{c.sql}%</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">{c.meetings}</td>
-                  <td className="py-3 pr-4 text-right tabular-nums">
-                    ${(c.revenue / 1000).toFixed(0)}K
-                  </td>
-                  <td className="py-3 text-right font-semibold tabular-nums text-emerald-600">
-                    {Math.round(roi)}%
-                  </td>
-                </tr>
-              );
-            })}
+            {CAMPAIGNS.map((c) => (
+              <tr key={c.name} className="border-b border-border/60">
+                <td className="py-3 pr-4 font-medium">{c.name}</td>
+                <td className="py-3 pr-4">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
+                    {c.status}
+                  </span>
+                </td>
+                <td className="py-3 pr-4 text-right tabular-nums">{c.enrolled}</td>
+                <td className="py-3 pr-4 text-right tabular-nums">{c.active}</td>
+                <td className="py-3 pr-4 text-right tabular-nums">{c.emails}</td>
+                <td className="py-3 pr-4 text-right tabular-nums">{c.mql}</td>
+                <td className="py-3 pr-4 text-right tabular-nums">{c.meetings}</td>
+                <td className="py-3 pr-4 text-right tabular-nums">{c.won}</td>
+                <td className="py-3 text-right font-semibold tabular-nums">{money(c.revenue)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -976,16 +941,16 @@ function CampaignsTab() {
    ============================================================ */
 
 function RevenueTab() {
-  const revByRep = REPS.map((r) => ({ name: r.name.split(" ")[0], revenue: r.revenue / 1000 }));
+  const { REVENUE_KPIS, REVENUE_SERIES, REPS, JOURNEY, hasData } = useAnalytics();
+  if (!hasData) return <EmptyState />;
+  const revByRep = REPS.filter((r) => r.revenue > 0).map((r) => ({
+    name: r.name.split(" ")[0],
+    revenue: r.revenue,
+  }));
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "MRR", value: "$48.2K" },
-          { label: "ARR", value: "$578K" },
-          { label: "Revenue this quarter", value: "$284K" },
-          { label: "Forecasted Q4", value: "$358K" },
-        ].map((k) => (
+        {REVENUE_KPIS.map((k) => (
           <Card key={k.label}>
             <p className="text-xs font-medium text-muted-foreground">{k.label}</p>
             <p className="mt-2 font-display text-2xl font-bold">{k.value}</p>
@@ -994,10 +959,13 @@ function RevenueTab() {
       </section>
 
       <Card>
-        <CardHeader title="Revenue & forecast" subtitle="Actual revenue with trend-based Q4 forecast (in $K)" />
+        <CardHeader
+          title="Revenue & forecast"
+          subtitle="Closed-won revenue by month with a trend-based 3-month forecast"
+        />
         <div className="h-80">
           <ResponsiveContainer>
-            <AreaChart data={REVENUE_FORECAST}>
+            <AreaChart data={REVENUE_SERIES}>
               <defs>
                 <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="oklch(0.52 0.19 262)" stopOpacity={0.5} />
@@ -1006,7 +974,7 @@ function RevenueTab() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis dataKey="m" tick={chartAxis} axisLine={false} tickLine={false} />
-              <YAxis tick={chartAxis} axisLine={false} tickLine={false} unit="K" />
+              <YAxis tick={chartAxis} axisLine={false} tickLine={false} />
               <ChartTooltip />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Area
@@ -1016,6 +984,7 @@ function RevenueTab() {
                 strokeWidth={2}
                 fill="url(#gRev)"
                 name="Actual"
+                connectNulls
               />
               <Line
                 type="monotone"
@@ -1025,6 +994,7 @@ function RevenueTab() {
                 strokeDasharray="6 4"
                 dot={{ r: 3 }}
                 name="Forecast"
+                connectNulls
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -1033,32 +1003,30 @@ function RevenueTab() {
 
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Revenue by rep" />
-          <div className="h-64">
-            <ResponsiveContainer>
-              <BarChart data={revByRep}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" tick={chartAxis} axisLine={false} tickLine={false} />
-                <YAxis tick={chartAxis} axisLine={false} tickLine={false} unit="K" />
-                <ChartTooltip />
-                <Bar dataKey="revenue" fill="oklch(0.52 0.19 262)" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <CardHeader title="Revenue by rep" subtitle="Closed-won value per owner" />
+          {revByRep.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No closed-won revenue recorded yet.
+            </p>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer>
+                <BarChart data={revByRep}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" tick={chartAxis} axisLine={false} tickLine={false} />
+                  <YAxis tick={chartAxis} axisLine={false} tickLine={false} />
+                  <ChartTooltip />
+                  <Bar dataKey="revenue" fill="oklch(0.52 0.19 262)" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Card>
 
         <Card>
-          <CardHeader title="Customer journey" subtitle="Average time between stages" />
+          <CardHeader title="Customer journey" subtitle="How many leads reach each stage" />
           <ol className="space-y-4">
-            {[
-              { step: "First visit", time: "Day 0" },
-              { step: "Lead capture", time: "Day 0.3" },
-              { step: "Email engagement", time: "Day 1.4" },
-              { step: "Chat interaction", time: "Day 3.1" },
-              { step: "Meeting booked", time: "Day 6.7" },
-              { step: "Opportunity created", time: "Day 9.2" },
-              { step: "Deal won", time: "Day 18.4" },
-            ].map((s, i, arr) => (
+            {JOURNEY.map((s, i, arr) => (
               <li key={s.step} className="flex items-start gap-3">
                 <div className="flex flex-col items-center">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
@@ -1068,7 +1036,7 @@ function RevenueTab() {
                 </div>
                 <div className="flex-1 pb-1">
                   <p className="text-sm font-medium">{s.step}</p>
-                  <p className="text-xs text-muted-foreground">{s.time}</p>
+                  <p className="text-xs text-muted-foreground">{s.value} leads</p>
                 </div>
               </li>
             ))}
@@ -1080,107 +1048,365 @@ function RevenueTab() {
 }
 
 /* ============================================================
-   REPORTS / CUSTOM BUILDER
+   EXECUTIVE (C-LEVEL)
    ============================================================ */
 
+function ExecutiveTab() {
+  const {
+    EXEC_KPIS,
+    PIPELINE_BY_STAGE,
+    PIPELINE_HEALTH,
+    SCORE_TRENDS,
+    REVENUE_SERIES,
+    ACTIVITY,
+    INSIGHTS,
+    hasData,
+  } = useAnalytics();
+  if (!hasData) return <EmptyState />;
+  return (
+    <>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {EXEC_KPIS.map((k) => (
+          <Card key={k.label}>
+            <p className="text-xs font-medium text-muted-foreground">{k.label}</p>
+            <p className="mt-2 font-display text-2xl font-bold">{k.value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{k.sub}</p>
+          </Card>
+        ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader title="Revenue trajectory" subtitle="Closed-won by month with forecast" />
+          <div className="h-72">
+            <ResponsiveContainer>
+              <AreaChart data={REVENUE_SERIES}>
+                <defs>
+                  <linearGradient id="gExecRev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.52 0.19 262)" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="oklch(0.52 0.19 262)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="m" tick={chartAxis} axisLine={false} tickLine={false} />
+                <YAxis tick={chartAxis} axisLine={false} tickLine={false} />
+                <ChartTooltip />
+                <Area
+                  type="monotone"
+                  dataKey="actual"
+                  stroke="oklch(0.52 0.19 262)"
+                  strokeWidth={2}
+                  fill="url(#gExecRev)"
+                  name="Actual"
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="forecast"
+                  stroke="oklch(0.68 0.18 275)"
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  name="Forecast"
+                  connectNulls
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Pipeline health" subtitle="Signals a leadership team watches" />
+          <div className="space-y-3">
+            {PIPELINE_HEALTH.map((h) => (
+              <div
+                key={h.label}
+                className={
+                  "rounded-xl border p-4 " +
+                  (h.tone === "good"
+                    ? "border-emerald-500/30 bg-emerald-500/5"
+                    : "border-amber-500/30 bg-amber-500/5")
+                }
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">{h.label}</p>
+                  <p className="font-display text-lg font-bold tabular-nums">{h.value}</p>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{h.hint}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Pipeline by stage" subtitle="Open value sitting in each stage" />
+          <div className="h-72">
+            <ResponsiveContainer>
+              <BarChart data={PIPELINE_BY_STAGE}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="stage" tick={chartAxis} axisLine={false} tickLine={false} />
+                <YAxis tick={chartAxis} axisLine={false} tickLine={false} />
+                <ChartTooltip />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]} name="Pipeline value">
+                  {PIPELINE_BY_STAGE.map((s) => (
+                    <Cell key={s.stage} fill={s.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Lead score trend" subtitle="Average score and score mix by month" />
+          <div className="h-72">
+            <ResponsiveContainer>
+              <LineChart data={SCORE_TRENDS}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="m" tick={chartAxis} axisLine={false} tickLine={false} />
+                <YAxis tick={chartAxis} axisLine={false} tickLine={false} />
+                <ChartTooltip />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line type="monotone" dataKey="avgScore" stroke="oklch(0.52 0.19 262)" strokeWidth={2} name="Avg score" />
+                <Line type="monotone" dataKey="hot" stroke="oklch(0.75 0.15 145)" strokeWidth={2} name="Hot (80+)" />
+                <Line type="monotone" dataKey="cold" stroke="oklch(0.72 0.18 30)" strokeWidth={2} name="Cold (<40)" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader
+            title="What needs a decision"
+            subtitle="Generated from your live data"
+            right={<Sparkles className="h-4 w-4 text-primary" />}
+          />
+          <div className="grid gap-3 md:grid-cols-2">
+            {INSIGHTS.map((i) => (
+              <div
+                key={i.title}
+                className={
+                  "rounded-xl border p-4 " +
+                  (i.tone === "warning"
+                    ? "border-amber-500/30 bg-amber-500/5"
+                    : "border-primary/20 bg-primary/5")
+                }
+              >
+                <p className="text-sm font-semibold">{i.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{i.body}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Live activity"
+            subtitle="Every lead event as it happens"
+            right={<Circle className="h-2 w-2 animate-pulse fill-emerald-500 text-emerald-500" />}
+          />
+          <ol className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+            {ACTIVITY.map((a, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span
+                  className={
+                    "mt-1 h-2 w-2 flex-shrink-0 rounded-full " +
+                    (a.tone === "success"
+                      ? "bg-emerald-500"
+                      : a.tone === "primary"
+                        ? "bg-primary"
+                        : "bg-muted-foreground/40")
+                  }
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-snug">{a.text}</p>
+                  <p className="text-xs text-muted-foreground">{a.ago} ago</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      </section>
+    </>
+  );
+}
+
+/* ============================================================
+   REPORTS
+   ============================================================ */
+
+const STATUS_OPTIONS = ["all", "new", "contacted", "qualified", "mql", "sql", "meeting", "won", "lost"];
+
 function ReportsTab() {
+  const { leads, CSV_ROWS, SOURCES, REPS, hasData } = useAnalytics();
+  const [days, setDays] = useState("30");
+  const [status, setStatus] = useState("all");
+  const [source, setSource] = useState("all");
+
+  const filtered = leads.filter((l) => {
+    const withinRange =
+      days === "all" || Date.now() - new Date(l.created_at).getTime() <= Number(days) * 86_400_000;
+    return (
+      withinRange && (status === "all" || l.status === status) && (source === "all" || l.source === source)
+    );
+  });
+
+  const revenue = filtered
+    .filter((l) => l.status === "won")
+    .reduce((s, l) => s + Number(l.estimated_value), 0);
+  const pipeline = filtered
+    .filter((l) => !["won", "lost"].includes(l.status))
+    .reduce((s, l) => s + Number(l.estimated_value), 0);
+  const avgScore = filtered.length
+    ? Math.round(filtered.reduce((s, l) => s + l.score, 0) / filtered.length)
+    : 0;
+
+  const downloadLeads = () => {
+    const header = ["created_at", "status", "source", "score", "estimated_value", "country"];
+    const csv = [
+      header,
+      ...filtered.map((l) => [
+        l.created_at,
+        l.status,
+        l.source,
+        String(l.score),
+        String(l.estimated_value),
+        l.country ?? "",
+      ]),
+    ]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    downloadCsv(csv, `leadflow-report-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  if (!hasData) return <EmptyState />;
+
   return (
     <>
       <Card>
         <CardHeader
-          title="Custom report builder"
-          subtitle="Build a report by picking a date range and filters. Save it, or schedule delivery."
+          title="Report builder"
+          subtitle="Filter your real lead data and export it as a spreadsheet"
         />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Select label="Date range" options={["Last 7 days", "Last 30 days", "Last 90 days", "Year to date", "Custom…"]} />
-          <Select label="Source" options={["All sources", "Organic", "LinkedIn", "Google Ads", "Chatbot"]} />
-          <Select label="Campaign" options={["All campaigns", "LinkedIn ABM — Q3", "Google Ads — Brand", "Webinar — SDR Playbook"]} />
-          <Select label="Industry" options={["All industries", "SaaS", "Fintech", "Healthcare", "E-commerce"]} />
-          <Select label="Lead status" options={["All statuses", "Cold", "MQL", "SQL", "Customer"]} />
-          <Select label="Assigned rep" options={["All reps", "Sarah Chen", "Marcus Reyes", "Priya Patel"]} />
-          <Select label="Group by" options={["Day", "Week", "Month", "Source", "Campaign"]} />
-          <Select label="Metric" options={["Leads", "Conversions", "Revenue", "Meetings"]} />
+        <div className="grid gap-4 md:grid-cols-3">
+          <SelectField
+            label="Date range"
+            value={days}
+            onChange={setDays}
+            options={[
+              { value: "7", label: "Last 7 days" },
+              { value: "30", label: "Last 30 days" },
+              { value: "90", label: "Last 90 days" },
+              { value: "all", label: "All time" },
+            ]}
+          />
+          <SelectField
+            label="Lead status"
+            value={status}
+            onChange={setStatus}
+            options={STATUS_OPTIONS.map((s) => ({
+              value: s,
+              label: s === "all" ? "All statuses" : s.toUpperCase(),
+            }))}
+          />
+          <SelectField
+            label="Source"
+            value={source}
+            onChange={setSource}
+            options={[
+              { value: "all", label: "All sources" },
+              ...SOURCES.map((s) => ({ value: s.key, label: s.name })),
+            ]}
+          />
         </div>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90">
-            Generate report
-          </button>
-          <button className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-            Save report
-          </button>
-          <button className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent">
-            Schedule delivery
-          </button>
-        </div>
-      </Card>
 
-      <Card>
-        <CardHeader title="Scheduled reports" subtitle="Automatically emailed to stakeholders" />
-        <div className="space-y-2">
+        <div className="mt-6 grid gap-3 sm:grid-cols-4">
           {[
-            { name: "Executive weekly", freq: "Every Monday · 9:00 AM", to: "leadership@leadflow.ai", next: "In 2 days" },
-            { name: "Sales team daily", freq: "Weekdays · 8:00 AM", to: "sales@leadflow.ai", next: "Tomorrow" },
-            { name: "Marketing monthly", freq: "1st of each month", to: "marketing@leadflow.ai", next: "In 12 days" },
-            { name: "Board quarterly", freq: "Quarterly · CFO delivery", to: "board@leadflow.ai", next: "In 41 days" },
-          ].map((r) => (
-            <div
-              key={r.name}
-              className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3"
-            >
-              <div>
-                <p className="text-sm font-semibold">{r.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {r.freq} · to {r.to}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">Next: {r.next}</span>
-                <button className="rounded-md p-1 text-muted-foreground hover:text-foreground">
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+            { label: "Leads in report", value: filtered.length.toLocaleString() },
+            { label: "Revenue", value: money(revenue) },
+            { label: "Open pipeline", value: money(pipeline) },
+            { label: "Avg score", value: String(avgScore) },
+          ].map((k) => (
+            <div key={k.label} className="rounded-xl border border-border bg-background p-4">
+              <p className="text-xs text-muted-foreground">{k.label}</p>
+              <p className="mt-1 font-display text-xl font-bold">{k.value}</p>
             </div>
           ))}
         </div>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          <button
+            onClick={downloadLeads}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
+          >
+            <Download className="h-4 w-4" /> Download lead report (CSV)
+          </button>
+          <button
+            onClick={() =>
+              downloadCsv(CSV_ROWS(), `leadflow-kpis-${new Date().toISOString().slice(0, 10)}.csv`)
+            }
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
+            <FileSpreadsheet className="h-4 w-4" /> Download KPI summary
+          </button>
+        </div>
       </Card>
 
       <Card>
-        <CardHeader title="Executive one-click reports" subtitle="Ready-made C-level snapshots" />
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            { label: "Pipeline health", icon: Activity },
-            { label: "Revenue forecast", icon: DollarSign },
-            { label: "Team performance", icon: Trophy },
-            { label: "Campaign ROI", icon: BarChart3 },
-            { label: "Growth metrics", icon: TrendingUp },
-            { label: "AI insights summary", icon: Sparkles },
-          ].map((r) => (
-            <button
-              key={r.label}
-              className="group flex items-center justify-between rounded-xl border border-border bg-background p-4 text-left transition-smooth hover:-translate-y-0.5 hover:shadow-elegant"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground">
-                  <r.icon className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-medium">{r.label}</span>
-              </div>
-              <Download className="h-4 w-4 text-muted-foreground" />
-            </button>
-          ))}
+        <CardHeader title="Team snapshot" subtitle="Included in every export" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="py-3 pr-4">Rep</th>
+                <th className="py-3 pr-4 text-right">Assigned</th>
+                <th className="py-3 pr-4 text-right">Won</th>
+                <th className="py-3 text-right">Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {REPS.map((r) => (
+                <tr key={r.name} className="border-b border-border/60">
+                  <td className="py-3 pr-4 font-medium">{r.name}</td>
+                  <td className="py-3 pr-4 text-right tabular-nums">{r.assigned}</td>
+                  <td className="py-3 pr-4 text-right tabular-nums">{r.won}</td>
+                  <td className="py-3 text-right tabular-nums">{money(r.revenue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Card>
     </>
   );
 }
 
-function Select({ label, options }: { label: string; options: string[] }) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>
-      <select className="h-9 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none ring-ring transition-smooth focus:ring-2">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none ring-ring transition-smooth focus:ring-2"
+      >
         {options.map((o) => (
-          <option key={o}>{o}</option>
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
         ))}
       </select>
     </label>
