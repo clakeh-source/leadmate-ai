@@ -45,6 +45,7 @@ export type LeadRow = {
   company_size: string | null;
   owner_id: string | null;
   last_contacted_at: string | null;
+  updated_at: string;
 };
 
 export type ActivityRow = {
@@ -93,7 +94,7 @@ async function fetchAnalytics() {
       supabase
         .from("leads")
         .select(
-          "id, created_at, status, source, score, estimated_value, country, company_size, owner_id, last_contacted_at",
+          "id, created_at, updated_at, status, source, score, estimated_value, country, company_size, owner_id, last_contacted_at",
         )
         .order("created_at", { ascending: false })
         .limit(5000),
