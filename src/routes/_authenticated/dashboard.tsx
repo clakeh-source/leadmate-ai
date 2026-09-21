@@ -364,7 +364,7 @@ function ChartTooltip() {
    ============================================================ */
 
 function OverviewTab() {
-  const { KPIS, GROWTH, SOURCES, ACTIVITY, hasData } = useAnalytics();
+  const { KPIS, GROWTH, SOURCES, ACTIVITY, INSIGHTS, hasData } = useAnalytics();
   if (!hasData) return <EmptyState />;
   return (
     <>
@@ -438,7 +438,7 @@ function OverviewTab() {
         <Card className="lg:col-span-2">
           <CardHeader title="AI insights" subtitle="Auto-generated from your last 30 days" right={<Sparkles className="h-4 w-4 text-primary" />} />
           <div className="grid gap-3 md:grid-cols-2">
-            {AI_INSIGHTS.map((i) => (
+            {INSIGHTS.map((i) => (
               <div
                 key={i.title}
                 className={
@@ -532,7 +532,7 @@ function Legend2({ items }: { items: [string, string][] }) {
    ============================================================ */
 
 function LeadsTab() {
-  const { SOURCES, SEGMENTS: INDUSTRIES, SCORE_DISTRIBUTION, hasData } = useAnalytics();
+  const { SOURCES, SEGMENTS: INDUSTRIES, SCORE_DISTRIBUTION, REGIONS, hasData } = useAnalytics();
   if (!hasData) return <EmptyState />;
   return (
     <>
@@ -609,7 +609,7 @@ function LeadsTab() {
         <CardHeader title="Geographic breakdown" subtitle="Where your leads and revenue come from" right={<MapPin className="h-4 w-4 text-muted-foreground" />} />
         <div className="space-y-4">
           {REGIONS.map((r) => {
-            const pct = (r.leads / REGIONS[0].leads) * 100;
+            const pct = REGIONS[0] ? (r.leads / REGIONS[0].leads) * 100 : 0;
             return (
               <div key={r.name}>
                 <div className="mb-1 flex items-center justify-between text-sm">
@@ -1314,7 +1314,7 @@ function ReportsTab() {
             onChange={setSource}
             options={[
               { value: "all", label: "All sources" },
-              ...SOURCES.map((s) => ({ value: s.key, label: s.name })),
+              ...SOURCES.map((s) => ({ value: s.key ?? s.name, label: s.name })),
             ]}
           />
         </div>
