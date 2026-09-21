@@ -201,6 +201,7 @@ function TopBar() {
 
 function PageHeader({ tab }: { tab: TabId }) {
   const label = NAV.find((n) => n.id === tab)?.label ?? "Overview";
+  const { isLoading } = useAnalytics();
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -208,49 +209,18 @@ function PageHeader({ tab }: { tab: TabId }) {
         <h1 className="mt-1 text-3xl font-bold tracking-tight">{label}</h1>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <DateRangePicker />
-        <FilterButton label="All sources" />
-        <FilterButton label="All campaigns" />
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+          <Circle
+            className={
+              "h-2 w-2 " +
+              (isLoading ? "fill-amber-500 text-amber-500" : "animate-pulse fill-emerald-500 text-emerald-500")
+            }
+          />
+          {isLoading ? "Refreshing…" : "Live data"}
+        </span>
         <ExportMenu />
       </div>
     </div>
-  );
-}
-
-function DateRangePicker() {
-  const [value, setValue] = useState("30d");
-  const opts = [
-    { id: "7d", label: "Last 7 days" },
-    { id: "30d", label: "Last 30 days" },
-    { id: "90d", label: "Last 90 days" },
-    { id: "ytd", label: "Year to date" },
-  ];
-  return (
-    <div className="flex overflow-hidden rounded-lg border border-border bg-card">
-      {opts.map((o) => (
-        <button
-          key={o.id}
-          onClick={() => setValue(o.id)}
-          className={
-            "px-3 py-1.5 text-xs font-medium transition-smooth " +
-            (value === o.id
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground")
-          }
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function FilterButton({ label }: { label: string }) {
-  return (
-    <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-smooth hover:text-foreground">
-      <Filter className="h-3.5 w-3.5" />
-      {label}
-    </button>
   );
 }
 
