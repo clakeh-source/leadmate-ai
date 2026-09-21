@@ -319,7 +319,17 @@ function CardHeader({ title, subtitle, right }: { title: string; subtitle?: stri
   );
 }
 
-function KpiCard({ label, value, delta, icon: Icon }: (typeof KPIS)[number]) {
+function KpiCard({
+  label,
+  value,
+  delta,
+  icon: Icon,
+}: {
+  label: string;
+  value: string | number;
+  delta: number;
+  icon: LucideIcon;
+}) {
   const positive = delta >= 0;
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-card transition-smooth hover:-translate-y-0.5 hover:shadow-elegant">
