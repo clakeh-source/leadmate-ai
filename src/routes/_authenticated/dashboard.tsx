@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAnalytics } from "@/lib/useAnalytics";
+import { useAnalytics, money } from "@/lib/useAnalytics";
+import type { LucideIcon } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -77,7 +78,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
    ============================================================ */
 
 function DashboardPage() {
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>("executive");
 
   return (
     <div className="flex min-h-screen bg-muted/40">
@@ -86,6 +87,7 @@ function DashboardPage() {
         <TopBar />
         <main className="mx-auto max-w-[1600px] px-6 py-8 space-y-8">
           <PageHeader tab={tab} />
+          {tab === "executive" && <ExecutiveTab />}
           {tab === "overview" && <OverviewTab />}
           {tab === "leads" && <LeadsTab />}
           {tab === "funnel" && <FunnelTab />}
@@ -105,6 +107,7 @@ function DashboardPage() {
    ============================================================ */
 
 const NAV = [
+  { id: "executive", label: "Executive", icon: Trophy },
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "leads", label: "Lead generation", icon: Users },
   { id: "funnel", label: "Funnel", icon: Target },
