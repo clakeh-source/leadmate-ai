@@ -254,38 +254,28 @@ function FilterButton({ label }: { label: string }) {
   );
 }
 
+export function downloadCsv(csv: string, filename: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function ExportMenu() {
-  const [open, setOpen] = useState(false);
+  const { CSV_ROWS } = useAnalytics();
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
-      >
-        <Download className="h-3.5 w-3.5" />
-        Export
-      </button>
-      {open && (
-        <div
-          className="absolute right-0 z-40 mt-2 w-56 rounded-lg border border-border bg-card p-1 shadow-elegant"
-          onMouseLeave={() => setOpen(false)}
-        >
-          {[
-            { label: "Export as PDF", icon: FileText },
-            { label: "Export as Excel", icon: FileSpreadsheet },
-            { label: "Export as CSV", icon: FileSpreadsheet },
-            { label: "Schedule weekly report", icon: Clock },
-          ].map((i) => (
-            <button
-              key={i.label}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted"
-            >
-              <i.icon className="h-4 w-4 text-muted-foreground" /> {i.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <button
+      onClick={() =>
+        downloadCsv(CSV_ROWS(), `leadflow-analytics-${new Date().toISOString().slice(0, 10)}.csv`)
+      }
+      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
+    >
+      <Download className="h-3.5 w-3.5" />
+      Export CSV
+    </button>
   );
 }
 
