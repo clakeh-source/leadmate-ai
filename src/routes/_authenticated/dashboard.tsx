@@ -174,25 +174,48 @@ function Sidebar({ tab, onChange }: { tab: TabId; onChange: (t: TabId) => void }
 }
 
 function TopBar() {
+  const [name, setName] = useState("");
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (active) setName(profile?.full_name || user.email || "");
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const initials =
+    name
+      .split(/[\s@.]+/)
+      .filter(Boolean)
+      .map((n) => n[0]?.toUpperCase())
+      .slice(0, 2)
+      .join("") || "—";
+
   return (
     <div className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-lg">
-      <div className="relative max-w-md flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          placeholder="Search leads, deals, reports…"
-          className="h-9 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none ring-ring transition-smooth focus:ring-2"
-        />
-      </div>
+      <div className="flex-1" />
       <div className="flex items-center gap-2">
-        <button className="relative rounded-lg border border-border bg-card p-2 text-muted-foreground transition-smooth hover:text-foreground">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-        </button>
+        <Link
+          to="/leads"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-smooth hover:text-foreground"
+        >
+          <Search className="h-3.5 w-3.5" /> Search leads
+        </Link>
         <div className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-2 pr-3">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-hero text-xs font-semibold text-primary-foreground">
-            SC
+            {initials}
           </div>
-          <span className="text-sm font-medium">Sarah C.</span>
+          <span className="max-w-[160px] truncate text-sm font-medium">{name || "Your account"}</span>
         </div>
       </div>
     </div>
