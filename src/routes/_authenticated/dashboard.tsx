@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAnalytics } from "@/lib/useAnalytics";
+import { useAnalytics, money } from "@/lib/useAnalytics";
+import type { LucideIcon } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -77,7 +78,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
    ============================================================ */
 
 function DashboardPage() {
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>("executive");
 
   return (
     <div className="flex min-h-screen bg-muted/40">
@@ -86,6 +87,7 @@ function DashboardPage() {
         <TopBar />
         <main className="mx-auto max-w-[1600px] px-6 py-8 space-y-8">
           <PageHeader tab={tab} />
+          {tab === "executive" && <ExecutiveTab />}
           {tab === "overview" && <OverviewTab />}
           {tab === "leads" && <LeadsTab />}
           {tab === "funnel" && <FunnelTab />}
@@ -105,6 +107,7 @@ function DashboardPage() {
    ============================================================ */
 
 const NAV = [
+  { id: "executive", label: "Executive", icon: Trophy },
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "leads", label: "Lead generation", icon: Users },
   { id: "funnel", label: "Funnel", icon: Target },
@@ -174,25 +177,48 @@ function Sidebar({ tab, onChange }: { tab: TabId; onChange: (t: TabId) => void }
 }
 
 function TopBar() {
+  const [name, setName] = useState("");
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (active) setName(profile?.full_name || user.email || "");
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const initials =
+    name
+      .split(/[\s@.]+/)
+      .filter(Boolean)
+      .map((n) => n[0]?.toUpperCase())
+      .slice(0, 2)
+      .join("") || "—";
+
   return (
     <div className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-lg">
-      <div className="relative max-w-md flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          placeholder="Search leads, deals, reports…"
-          className="h-9 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none ring-ring transition-smooth focus:ring-2"
-        />
-      </div>
+      <div className="flex-1" />
       <div className="flex items-center gap-2">
-        <button className="relative rounded-lg border border-border bg-card p-2 text-muted-foreground transition-smooth hover:text-foreground">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-        </button>
+        <Link
+          to="/leads"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-smooth hover:text-foreground"
+        >
+          <Search className="h-3.5 w-3.5" /> Search leads
+        </Link>
         <div className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-2 pr-3">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-hero text-xs font-semibold text-primary-foreground">
-            SC
+            {initials}
           </div>
-          <span className="text-sm font-medium">Sarah C.</span>
+          <span className="max-w-[160px] truncate text-sm font-medium">{name || "Your account"}</span>
         </div>
       </div>
     </div>
@@ -201,6 +227,7 @@ function TopBar() {
 
 function PageHeader({ tab }: { tab: TabId }) {
   const label = NAV.find((n) => n.id === tab)?.label ?? "Overview";
+  const { isLoading } = useAnalytics();
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -208,84 +235,43 @@ function PageHeader({ tab }: { tab: TabId }) {
         <h1 className="mt-1 text-3xl font-bold tracking-tight">{label}</h1>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <DateRangePicker />
-        <FilterButton label="All sources" />
-        <FilterButton label="All campaigns" />
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+          <Circle
+            className={
+              "h-2 w-2 " +
+              (isLoading ? "fill-amber-500 text-amber-500" : "animate-pulse fill-emerald-500 text-emerald-500")
+            }
+          />
+          {isLoading ? "Refreshing…" : "Live data"}
+        </span>
         <ExportMenu />
       </div>
     </div>
   );
 }
 
-function DateRangePicker() {
-  const [value, setValue] = useState("30d");
-  const opts = [
-    { id: "7d", label: "Last 7 days" },
-    { id: "30d", label: "Last 30 days" },
-    { id: "90d", label: "Last 90 days" },
-    { id: "ytd", label: "Year to date" },
-  ];
-  return (
-    <div className="flex overflow-hidden rounded-lg border border-border bg-card">
-      {opts.map((o) => (
-        <button
-          key={o.id}
-          onClick={() => setValue(o.id)}
-          className={
-            "px-3 py-1.5 text-xs font-medium transition-smooth " +
-            (value === o.id
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground")
-          }
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function FilterButton({ label }: { label: string }) {
-  return (
-    <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-smooth hover:text-foreground">
-      <Filter className="h-3.5 w-3.5" />
-      {label}
-    </button>
-  );
+export function downloadCsv(csv: string, filename: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function ExportMenu() {
-  const [open, setOpen] = useState(false);
+  const { CSV_ROWS } = useAnalytics();
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
-      >
-        <Download className="h-3.5 w-3.5" />
-        Export
-      </button>
-      {open && (
-        <div
-          className="absolute right-0 z-40 mt-2 w-56 rounded-lg border border-border bg-card p-1 shadow-elegant"
-          onMouseLeave={() => setOpen(false)}
-        >
-          {[
-            { label: "Export as PDF", icon: FileText },
-            { label: "Export as Excel", icon: FileSpreadsheet },
-            { label: "Export as CSV", icon: FileSpreadsheet },
-            { label: "Schedule weekly report", icon: Clock },
-          ].map((i) => (
-            <button
-              key={i.label}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted"
-            >
-              <i.icon className="h-4 w-4 text-muted-foreground" /> {i.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <button
+      onClick={() =>
+        downloadCsv(CSV_ROWS(), `leadflow-analytics-${new Date().toISOString().slice(0, 10)}.csv`)
+      }
+      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
+    >
+      <Download className="h-3.5 w-3.5" />
+      Export CSV
+    </button>
   );
 }
 
@@ -319,7 +305,17 @@ function CardHeader({ title, subtitle, right }: { title: string; subtitle?: stri
   );
 }
 
-function KpiCard({ label, value, delta, icon: Icon }: (typeof KPIS)[number]) {
+function KpiCard({
+  label,
+  value,
+  delta,
+  icon: Icon,
+}: {
+  label: string;
+  value: string | number;
+  delta: number;
+  icon: LucideIcon;
+}) {
   const positive = delta >= 0;
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-card transition-smooth hover:-translate-y-0.5 hover:shadow-elegant">
@@ -368,7 +364,7 @@ function ChartTooltip() {
    ============================================================ */
 
 function OverviewTab() {
-  const { KPIS, GROWTH, SOURCES, ACTIVITY, hasData } = useAnalytics();
+  const { KPIS, GROWTH, SOURCES, ACTIVITY, INSIGHTS, hasData } = useAnalytics();
   if (!hasData) return <EmptyState />;
   return (
     <>
@@ -442,7 +438,7 @@ function OverviewTab() {
         <Card className="lg:col-span-2">
           <CardHeader title="AI insights" subtitle="Auto-generated from your last 30 days" right={<Sparkles className="h-4 w-4 text-primary" />} />
           <div className="grid gap-3 md:grid-cols-2">
-            {AI_INSIGHTS.map((i) => (
+            {INSIGHTS.map((i) => (
               <div
                 key={i.title}
                 className={
@@ -536,7 +532,7 @@ function Legend2({ items }: { items: [string, string][] }) {
    ============================================================ */
 
 function LeadsTab() {
-  const { SOURCES, SEGMENTS: INDUSTRIES, SCORE_DISTRIBUTION, hasData } = useAnalytics();
+  const { SOURCES, SEGMENTS: INDUSTRIES, SCORE_DISTRIBUTION, REGIONS, hasData } = useAnalytics();
   if (!hasData) return <EmptyState />;
   return (
     <>
@@ -613,7 +609,7 @@ function LeadsTab() {
         <CardHeader title="Geographic breakdown" subtitle="Where your leads and revenue come from" right={<MapPin className="h-4 w-4 text-muted-foreground" />} />
         <div className="space-y-4">
           {REGIONS.map((r) => {
-            const pct = (r.leads / REGIONS[0].leads) * 100;
+            const pct = REGIONS[0] ? (r.leads / REGIONS[0].leads) * 100 : 0;
             return (
               <div key={r.name}>
                 <div className="mb-1 flex items-center justify-between text-sm">
@@ -1318,7 +1314,7 @@ function ReportsTab() {
             onChange={setSource}
             options={[
               { value: "all", label: "All sources" },
-              ...SOURCES.map((s) => ({ value: s.key, label: s.name })),
+              ...SOURCES.map((s) => ({ value: s.key ?? s.name, label: s.name })),
             ]}
           />
         </div>
