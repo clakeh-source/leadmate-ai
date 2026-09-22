@@ -503,6 +503,13 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
   );
 }
 
+const SIGNALS: [string, string][] = [
+  ["icp_fit", "ICP fit"],
+  ["intent", "Buying intent"],
+  ["engagement", "Engagement"],
+  ["data_confidence", "Data confidence"],
+];
+
 function LeadDetail({ lead, onClose }: { lead: LeadRow; onClose: () => void }) {
   const raw = (lead.score_breakdown ?? {}) as Record<string, unknown>;
   const breakdown = raw as Record<string, number>;
