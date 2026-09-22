@@ -1314,10 +1314,7 @@ function ReportsTab() {
             onChange={setSource}
             options={[
               { value: "all", label: "All sources" },
-              ...SOURCES.map((s) => ({
-                value: s.name.toLowerCase().replace(/\s+/g, "_"),
-                label: s.name,
-              })),
+              ...SOURCES.map((s) => ({ value: s.key, label: s.name })),
             ]}
           />
         </div>
