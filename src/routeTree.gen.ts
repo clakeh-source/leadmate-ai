@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedScoringRouteImport } from './routes/_authenticated/scoring'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCampaignsRouteImport } from './routes/_authenticated/campaigns'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedScoringRoute = AuthenticatedScoringRouteImport.update({
+  id: '/scoring',
+  path: '/scoring',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   id: '/leads',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/campaigns': typeof AuthenticatedCampaignsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/scoring': typeof AuthenticatedScoringRoute
   '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
   '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
 }
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/campaigns': typeof AuthenticatedCampaignsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/scoring': typeof AuthenticatedScoringRoute
   '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
   '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
 }
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/_authenticated/campaigns': typeof AuthenticatedCampaignsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
+  '/_authenticated/scoring': typeof AuthenticatedScoringRoute
   '/api/public/hooks/email-queue': typeof ApiPublicHooksEmailQueueRoute
   '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
 }
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/dashboard'
     | '/leads'
+    | '/scoring'
     | '/api/public/hooks/email-queue'
     | '/api/public/webhooks/resend'
   fileRoutesByTo: FileRoutesByTo
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/dashboard'
     | '/leads'
+    | '/scoring'
     | '/api/public/hooks/email-queue'
     | '/api/public/webhooks/resend'
   id:
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/_authenticated/campaigns'
     | '/_authenticated/dashboard'
     | '/_authenticated/leads'
+    | '/_authenticated/scoring'
     | '/api/public/hooks/email-queue'
     | '/api/public/webhooks/resend'
   fileRoutesById: FileRoutesById
@@ -149,6 +161,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/scoring': {
+      id: '/_authenticated/scoring'
+      path: '/scoring'
+      fullPath: '/scoring'
+      preLoaderRoute: typeof AuthenticatedScoringRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leads': {
       id: '/_authenticated/leads'
@@ -192,12 +211,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCampaignsRoute: typeof AuthenticatedCampaignsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
+  AuthenticatedScoringRoute: typeof AuthenticatedScoringRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCampaignsRoute: AuthenticatedCampaignsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
+  AuthenticatedScoringRoute: AuthenticatedScoringRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

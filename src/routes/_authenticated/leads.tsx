@@ -503,8 +503,19 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
   );
 }
 
+const SIGNALS: [string, string][] = [
+  ["icp_fit", "ICP fit"],
+  ["intent", "Buying intent"],
+  ["engagement", "Engagement"],
+  ["data_confidence", "Data confidence"],
+];
+
 function LeadDetail({ lead, onClose }: { lead: LeadRow; onClose: () => void }) {
-  const breakdown = (lead.score_breakdown ?? {}) as Record<string, number>;
+  const raw = (lead.score_breakdown ?? {}) as Record<string, unknown>;
+  const breakdown = raw as Record<string, number>;
+  const weights = (raw["weights"] ?? {}) as Record<string, number>;
+  const contributions = (raw["contributions"] ?? {}) as Record<string, number>;
+  const reasons = (Array.isArray(raw["reasons"]) ? raw["reasons"] : []) as string[];
   const fetchActivities = useServerFn(getLeadActivities);
   const { data: activities } = useQuery({
     queryKey: ["lead-activities", lead.id],
@@ -540,21 +551,48 @@ function LeadDetail({ lead, onClose }: { lead: LeadRow; onClose: () => void }) {
             <ScoreBadge score={lead.score} />
           </div>
           <div className="mt-3 space-y-2">
-            {Object.entries(breakdown).map(([key, value]) => (
-              <div key={key}>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{key.replace("_", " ")}</span>
-                  <span>{value}</span>
+            {SIGNALS.map(([key, label]) => {
+              const value = Number(breakdown[key] ?? 0);
+              const weight = Number(weights[key] ?? 0);
+              const contribution = Number(contributions[key] ?? 0);
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>
+                      {label}
+                      {weight ? <span className="opacity-60"> · {weight}% weight</span> : null}
+                    </span>
+                    <span>
+                      {value}/100
+                      {contribution ? ` (+${contribution} pts)` : ""}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 rounded-full bg-muted">
+                    <div
+                      className="h-1.5 rounded-full bg-gradient-hero"
+                      style={{ width: `${Math.min(100, value)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="mt-1 h-1.5 rounded-full bg-muted">
-                  <div
-                    className="h-1.5 rounded-full bg-gradient-hero"
-                    style={{ width: `${Math.min(100, Number(value) * 3)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {reasons.length > 0 && (
+            <ul className="mt-4 space-y-1.5 border-t border-border pt-3 text-xs text-muted-foreground">
+              {reasons.map((r) => (
+                <li key={r} className="flex gap-2">
+                  <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-primary" />
+                  {r}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            to="/scoring"
+            className="mt-3 inline-block text-xs font-medium text-primary hover:underline"
+          >
+            Adjust scoring rules
+          </Link>
         </div>
 
         <AiEmailComposer leadId={lead.id} email={lead.email} />

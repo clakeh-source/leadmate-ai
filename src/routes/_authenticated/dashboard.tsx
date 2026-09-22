@@ -160,16 +160,18 @@ function Sidebar({ tab, onChange }: { tab: TabId; onChange: (t: TabId) => void }
           Workspace
         </p>
         {[
-          { label: "Inbox", icon: MessageSquare },
-          { label: "Settings", icon: Settings },
+          { label: "Leads", icon: Users, to: "/leads" as const },
+          { label: "Campaigns", icon: MessageSquare, to: "/campaigns" as const },
+          { label: "Scoring rules", icon: Settings, to: "/scoring" as const },
         ].map((n) => (
-          <div
+          <Link
             key={n.label}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+            to={n.to}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground"
           >
             <n.icon className="h-4 w-4" />
             {n.label}
-          </div>
+          </Link>
         ))}
       </nav>
     </aside>
@@ -1314,7 +1316,7 @@ function ReportsTab() {
             onChange={setSource}
             options={[
               { value: "all", label: "All sources" },
-              ...SOURCES.map((s) => ({ value: s.key ?? s.name, label: s.name })),
+              ...SOURCES.map((s) => ({ value: s.key, label: s.name })),
             ]}
           />
         </div>

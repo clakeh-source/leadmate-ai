@@ -239,6 +239,7 @@ export function useAnalytics() {
   const SOURCES = [...sourceMap.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([key, value], i) => ({
+      key,
       name: SOURCE_LABELS[key] ?? key,
       value,
       color: PALETTE[i % PALETTE.length]!,
