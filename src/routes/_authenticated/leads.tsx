@@ -504,7 +504,11 @@ function AiEmailComposer({ leadId, email }: { leadId: string; email: string }) {
 }
 
 function LeadDetail({ lead, onClose }: { lead: LeadRow; onClose: () => void }) {
-  const breakdown = (lead.score_breakdown ?? {}) as Record<string, number>;
+  const raw = (lead.score_breakdown ?? {}) as Record<string, unknown>;
+  const breakdown = raw as Record<string, number>;
+  const weights = (raw["weights"] ?? {}) as Record<string, number>;
+  const contributions = (raw["contributions"] ?? {}) as Record<string, number>;
+  const reasons = (Array.isArray(raw["reasons"]) ? raw["reasons"] : []) as string[];
   const fetchActivities = useServerFn(getLeadActivities);
   const { data: activities } = useQuery({
     queryKey: ["lead-activities", lead.id],
